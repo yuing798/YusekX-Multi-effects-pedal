@@ -1,0 +1,80 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "17"
+      }
+    },
+    {
+      "name": "windows-msvc",
+      "inherits": "base",
+      "description": "使用 MSVC 编译器 (Windows)",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "cacheVariables": {
+        
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Windows" ],
+          "visualStudioToolset": "v143" 
+        }
+      }
+    },
+    {
+      "name": "developer-YusekX-debug",
+      "displayName": "My Local Dev - Debug",
+      "inherits": "windows-msvc",
+      "cacheVariables": {
+        "USE_FETCHCONTENT": "OFF",
+        "CMAKE_PREFIX_PATH": "D:/audio_develop/juce/JUCE/install",
+        "CMAKE_BUILD_TYPE": "Debug"
+        
+      }
+    },
+    {
+      "name": "developer-YusekX-release",
+      "displayName": "My Local Dev - Release",
+      "inherits": "windows-msvc",
+      "cacheVariables": {
+        "USE_FETCHCONTENT": "OFF",
+        "CMAKE_PREFIX_PATH": "D:/audio_develop/juce/JUCE/install",
+        "CMAKE_BUILD_TYPE": "Release"
+       
+      }
+    },
+    {
+      "name": "github-public",
+      "displayName": "GitHub Build (Auto JUCE)",
+      "inherits": "windows-msvc",
+      "cacheVariables": {
+        "USE_FETCHCONTENT": "ON"
+        
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "developer-YusekX-debug",
+      "jobs": 4
+    },
+    {
+      "name": "release",
+      "configurePreset": "developer-YusekX-release",
+      "jobs": 4
+    }
+  ]
+}

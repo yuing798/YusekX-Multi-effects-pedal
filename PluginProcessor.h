@@ -1,0 +1,80 @@
+#pragma once
+//该文件定义逻辑和声音处理类，包含了插件的核心功能实现
+#include <juce_audio_processors/juce_audio_processors.h>
+#include "Utils/constants.h"
+#include "Utils/mathFunc.h"
+#include "Utils/table.h"
+#include "juce_audio_basics/juce_audio_basics.h"
+
+
+//==============================================================================
+class AudioPluginAudioProcessor final : public juce::AudioProcessor
+{
+public:
+    //==============================================================================
+    AudioPluginAudioProcessor();
+    ~AudioPluginAudioProcessor() override;
+
+    //==============================================================================
+    void prepareToPlay (double sampleRate, int samplesPerBlock) override;
+    void releaseResources() override;
+
+    //告诉 DAW 支持什么样的声道配置（单声道/立体声）
+    bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
+
+    void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    using AudioProcessor::processBlock;
+
+    //==============================================================================
+    juce::AudioProcessorEditor* createEditor() override;
+    bool hasEditor() const override;
+
+    //==============================================================================
+    const juce::String getName() const override {return JucePlugin_Name;}
+
+    bool acceptsMidi() const override;
+    bool producesMidi() const override;
+    bool isMidiEffect() const override;
+
+    //告诉 DAW 效果是否有“尾巴”（如延时或混响）
+    double getTailLengthSeconds() const override { return 0.0; }
+
+    //==============================================================================
+    int getNumPrograms() override { return 1; }
+    int getCurrentProgram() override { return 0; }
+    void setCurrentProgram (int index) override;
+    const juce::String getProgramName (int index) override;
+    void changeProgramName (int index, const juce::String& newName) override;
+
+    //==============================================================================
+    void getStateInformation (juce::MemoryBlock& destData) override;
+    void setStateInformation (const void* data, int sizeInBytes) override;
+
+    juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
+
+private:
+    //==============================================================================
+    double mCurrentSampleRate{defaultSampleRate}; //当前采样率
+
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+    juce::AudioProcessorValueTreeState apvts;
+
+    struct mMidiInfo
+    {
+        bool isNoteOn{ false };
+        int noteNumber{ 0 };
+        float velocity{ 0.0f };// MIDI 音符的力度
+        float phaseStep{ 0.0f };// 用于振荡器的相位步长
+        float currentIndex{ 0.0f };
+        std::vector<float> sineTable;
+        juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> midiGain;
+
+        void testMidiInfo(juce::MidiBuffer& midiMessages, 
+            int numSamples, 
+            float* channelDataLeft, 
+            float* channelDataRight,
+            double sampleRate);
+    } mMidiInfo;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
+};

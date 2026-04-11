@@ -1,0 +1,255 @@
+#include "PluginProcessor.h"
+#include "PluginEditor.h"
+#include "Utils/mathFunc.h"
+#include <vector>
+
+//==============================================================================
+AudioPluginAudioProcessor::AudioPluginAudioProcessor()
+     : AudioProcessor (BusesProperties()
+                     #if ! JucePlugin_IsMidiEffect
+                      #if ! JucePlugin_IsSynth
+                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
+                      #endif
+                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+                     #endif
+                       ),
+                       apvts(*this, 
+                            nullptr, 
+                            "Parameters", 
+                            createParameterLayout())
+                        
+{
+    mMidiInfo.sineTable = SineLookUpTable(bufferSize);
+}
+
+AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
+{
+}
+
+//==============================================================================
+juce::AudioProcessorValueTreeState::ParameterLayout
+AudioPluginAudioProcessor::createParameterLayout()
+{
+    std::vector<std::unique_ptr<juce::RangedAudioParameter>> parameters;
+
+    parameters.push_back (std::make_unique<juce::AudioParameterFloat>(
+        "outputGain",//参数ID
+        "Output Gain",//参数名称
+        juce::NormalisableRange<float> 
+            (-60.0f, 
+            6.0f, 
+            0.1f),//参数范围和步长
+        0.0f,//默认值
+        "dB"));//参数标签
+
+    return { parameters.begin(), parameters.end() };
+}
+
+//==============================================================================
+void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+{
+    // Use this method as the place to do any pre-playback
+    // initialisation that you need..
+    juce::ignoreUnused (sampleRate, samplesPerBlock);
+
+    mCurrentSampleRate = sampleRate; //保存当前采样率
+
+    mMidiInfo.midiGain.reset(sampleRate, 0.05); //设置平滑器的采样率和时间常数
+    mMidiInfo.midiGain.setCurrentAndTargetValue(0.0f); //初始化平滑器的当前值和目标值
+}
+
+void AudioPluginAudioProcessor::releaseResources()
+{
+    // When playback stops, you can use this as an opportunity to free up any
+    // spare memory, etc.
+}
+
+bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+{
+  #if JucePlugin_IsMidiEffect
+    juce::ignoreUnused (layouts);
+    return true;
+  #else
+    // This is the place where you check if the layout is supported.
+    // In this template code we only support mono or stereo.
+    // Some plugin hosts, such as certain GarageBand versions, will only
+    // load plugins that support stereo bus layouts.
+    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
+     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
+        return false;
+
+    // This checks if the input layout matches the output layout
+   #if ! JucePlugin_IsSynth
+    if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
+        return false;
+   #endif
+
+    return true;
+  #endif
+}
+
+void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
+                                              juce::MidiBuffer& midiMessages)
+{
+    
+    auto numSamples = buffer.getNumSamples();
+
+    juce::ScopedNoDenormals noDenormals;
+    auto totalNumInputChannels  = getTotalNumInputChannels();
+    auto totalNumOutputChannels = getTotalNumOutputChannels();
+
+    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+        buffer.clear (i, 0, buffer.getNumSamples());
+
+    auto* channelDataLeft = buffer.getWritePointer(0);
+    auto* channelDataRight = buffer.getWritePointer(1);
+
+
+    mMidiInfo.testMidiInfo(midiMessages, numSamples, channelDataLeft, channelDataRight, mCurrentSampleRate);
+
+    //这个地方在存储数据，不改变实际听感
+    auto gainDB = 
+        apvts.getRawParameterValue("outputGain");
+    auto gainLinear = 
+        juce::Decibels::decibelsToGain(gainDB->load());
+
+    buffer.applyGain(0, 0, numSamples, gainLinear);
+    buffer.applyGain(1, 0, numSamples, gainLinear);
+}
+
+//这里他妈是我为了测试声音写的他妈的简单midi声源
+void AudioPluginAudioProcessor::mMidiInfo::testMidiInfo(
+    juce::MidiBuffer& midiMessages, 
+    int numSamples, 
+    float* channelDataLeft, 
+    float* channelDataRight,
+    double sampleRate)
+{
+    for (const auto& midiMessage : midiMessages)
+    {
+        const auto message = midiMessage.getMessage();
+
+        if (message.isNoteOn())
+        {
+            currentIndex = 0.0f; //重置相位索引
+            isNoteOn = true;
+            noteNumber = message.getNoteNumber();
+            velocity = message.getFloatVelocity(); //归一化力度
+            midiGain.setTargetValue(
+                velocity); //将力度值设置为平滑器的目标值
+
+            auto frequency = juce::MidiMessage::getMidiNoteInHertz(             
+                noteNumber);
+            phaseStep = static_cast<float>(frequency / sampleRate); //计算相位步长
+        }
+        else if (message.isNoteOff())
+        {
+            isNoteOn = false;
+            midiGain.setTargetValue(0.0f); //当音符关闭时，将目标值设置为0以实现平滑衰减
+        }
+    }
+
+    for (int sample = 0; sample < numSamples; ++sample)
+    {
+        if (isNoteOn)
+        {
+            const auto indexStep = 
+                phaseStep * sineTable.size();
+            currentIndex = getCircularBufferIndex(
+                currentIndex + indexStep, 
+                static_cast<int>(sineTable.size()));
+            const auto sineValue = 
+                getLinearInterpolator(sineTable.data(),
+                    static_cast<int>(sineTable.size()),
+                    currentIndex);
+            const auto smoothedVelocity = midiGain.getNextValue();
+            channelDataLeft[sample] = sineValue * smoothedVelocity;
+            channelDataRight[sample] = sineValue * smoothedVelocity;
+        }
+    }
+}
+
+
+//==============================================================================
+//当用户保存 DAW 工程或保存预设时调用，你应该在这里将插件的参数状态保存到 destData 中
+void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+{
+    auto state = apvts.copyState();
+    std::unique_ptr<juce::XmlElement> xml (state.createXml());
+    copyXmlToBinary (*xml, destData);
+}
+
+//加载缓存的插件参数状态，当用户加载 DAW 工程或预设时调用，你应该在这里从 data 中恢复插件的参数状态
+void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+{
+    std::unique_ptr<juce::XmlElement> xmlState (
+        getXmlFromBinary (data, sizeInBytes));
+
+    if (xmlState != nullptr && xmlState->hasTagName (
+        apvts.state.getType())){
+            apvts.replaceState (juce::ValueTree::fromXml (*xmlState));
+        }
+        
+}
+
+//==============================================================================
+// This creates new instances of the plugin..
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
+{
+    return new AudioPluginAudioProcessor();
+}
+
+//==============================================================================
+bool AudioPluginAudioProcessor::acceptsMidi() const
+{
+   #if JucePlugin_WantsMidiInput
+    return true;
+   #else
+    return false;
+   #endif
+}
+
+bool AudioPluginAudioProcessor::producesMidi() const
+{
+   #if JucePlugin_ProducesMidiOutput
+    return true;
+   #else
+    return false;
+   #endif
+}
+
+bool AudioPluginAudioProcessor::isMidiEffect() const
+{
+   #if JucePlugin_IsMidiEffect
+    return true;
+   #else
+    return false;
+   #endif
+}
+
+void AudioPluginAudioProcessor::setCurrentProgram (int index)
+{
+    juce::ignoreUnused (index);
+}
+
+const juce::String AudioPluginAudioProcessor::getProgramName (int index)
+{
+    juce::ignoreUnused (index);
+    return {};
+}
+
+void AudioPluginAudioProcessor::changeProgramName (int index, const juce::String& newName)
+{
+    juce::ignoreUnused (index, newName);
+}
+
+//==============================================================================
+bool AudioPluginAudioProcessor::hasEditor() const
+{
+    return true; // (change this to false if you choose to not supply an editor)
+}
+
+juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
+{
+    return new AudioPluginAudioProcessorEditor (*this);
+}
