@@ -5,7 +5,9 @@
 #include "Utils/constants.h"
 #include "Utils/mathFunc.h"
 #include "Utils/table.h"
-#include "juce_audio_basics/juce_audio_basics.h"
+#include "plugins/Delay/base_delay.h"
+#include "plugins/Tremolo/base_tremolo.h"
+#include "plugins/plugins.h"
 
 //==============================================================================
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
@@ -23,7 +25,7 @@ public:
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
 
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
-    using AudioProcessor::processBlock;
+    //using AudioProcessor::processBlock;
 
     //==============================================================================
     juce::AudioProcessorEditor* createEditor() override;
@@ -78,6 +80,8 @@ private:
             float* channelDataRight,
             double sampleRate);
     } mMidiInfo;
+
+    BaseDelayProcessor mBaseDelayProcessor;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };

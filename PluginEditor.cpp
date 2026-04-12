@@ -3,8 +3,9 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAudioProcessor& p)
-    : AudioProcessorEditor (&p), processorRef (p)
+AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (
+    AudioPluginAudioProcessor& p)
+    : AudioProcessorEditor (&p), processorRef (p),mBaseDelayEditor(p.getAPVTS())
 {
     outputGainSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     outputGainSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, 20);
@@ -23,7 +24,10 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
         testButton.setButtonText(processorRef.isMidiTestOn ? "midi test off" : "midi test on");
     };
 
+    addAndMakeVisible(mBaseDelayEditor);
+
     setSize (400, 300);
+    
 }
 
 AudioPluginAudioProcessorEditor::~AudioPluginAudioProcessorEditor()
@@ -47,4 +51,5 @@ void AudioPluginAudioProcessorEditor::resized()
     // subcomponents in your editor..
     outputGainSlider.setBounds(10,10,100,50);
     testButton.setBounds(120, 10, 100, 30);
+    mBaseDelayEditor.setBounds(10, 70, 380, 200);
 }

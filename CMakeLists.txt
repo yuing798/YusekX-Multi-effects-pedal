@@ -43,6 +43,7 @@ target_sources(Multi_effects_processor
         PluginProcessor.cpp)
 
 add_subdirectory(Utils)
+add_subdirectory(plugins)
 
 target_include_directories(Multi_effects_processor
 PRIVATE
