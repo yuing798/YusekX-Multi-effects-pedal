@@ -189,7 +189,7 @@ void Tremolo::prepareToPlay(double sampleRate){
     peakPosition.reset(currentSampleRate, 0.01);
     peakPosition.setCurrentAndTargetValue(0.5f);
 
-    sineGainTable = SineLookUpTable(bufferSize);
+    SineLookUpTable(sineGainTable,bufferSize);
 }
 
 void Tremolo::processTremolo(

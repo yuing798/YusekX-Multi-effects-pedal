@@ -56,51 +56,36 @@ class BaseDelayProcessor{
 private:
     static constexpr float maxDelayTimeMs { 500.0f };
 
-	struct DelayParameters
-	{
-		bool isOpen { false };
-		float delayTimeMs { 350.0f };
- 
-        //对于非相干信号，如果要保持听感响度一致，需要wet^2 + dry^2 = 1
-		float wetLevel { 0.35f };
-		float dryLevel { 1.0f };
-        float feedback { 0.5f };
-	};
-	class DelayProcessor final
-	{
-	private:
-		juce::AudioBuffer<float> mDelayBuffer;
-		double mCurrentSampleRate {defaultSampleRate };
-		int mDelayBufferLength { 0 };
-		int mWritePosition { 0 };
 
-		juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
-			mSmoothedDelayTimeMs { 350.0f };
-		juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
-			mSmoothedWetLevel { 0.35f };
-		juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
-			mSmoothedDryLevel { 1.0f };
-		juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
-			mSmoothedFeedback { 0.5f };
+    bool isOpen { false };
+    float delayTimeMs { 350.0f };
 
-	    float getDelaySamples(float delayTimeMs) const;
+    //对于非相干信号，如果要保持听感响度一致，需要wet^2 + dry^2 = 1
+    float wetLevel { 0.35f };
+    float dryLevel { 1.0f };
+    float feedback { 0.5f };
 
-	public:
-		DelayProcessor() = default;
-		~DelayProcessor() = default;
+    juce::AudioBuffer<float> mDelayBuffer;
+    double mCurrentSampleRate {defaultSampleRate };
+    int mDelayBufferLength { 0 };
+    int mWritePosition { 0 };
 
-        void prepareToPlay(double sampleRate, int maximumBlockSize, int numChannels);
-        void setParameters(const DelayParameters& parameters);
-        void processBlock(
-			juce::AudioBuffer<float>& buffer,
-			int startSample,
-			int numSamples,
-			int numChannels);
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
+        mSmoothedDelayTimeMs { 350.0f };
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
+        mSmoothedWetLevel { 0.35f };
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
+        mSmoothedDryLevel { 1.0f };
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
+        mSmoothedFeedback { 0.5f };
 
-	};
+    float getDelaySamples(float delayTimeMs) const;
 
-	DelayParameters mParameters;
-	DelayProcessor mProcessor;
+    void processBlock(
+        juce::AudioBuffer<float>& buffer,
+        int startSample,
+        int numSamples,
+        int numChannels);
 
     juce::AudioProcessorValueTreeState& mAPVTS;
 
@@ -111,7 +96,6 @@ public:
     ~BaseDelayProcessor() = default;
     static void createParameterLayout(std::vector<std::unique_ptr<juce::RangedAudioParameter>>& parameters);
     void updateProcessorParameters();
-    void prepareToPlay(double sampleRate, int maximumBlockSize, int numChannels);
 
     void processDelay(
 		juce::AudioBuffer<float>& buffer,
@@ -120,4 +104,6 @@ public:
 		int numChannels);
 
     void syncParametersFromAPVTS();
+
+    void prepareToPlay(double sampleRate, int maximumBlockSize, int numChannels);
 };

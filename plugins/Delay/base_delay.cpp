@@ -120,33 +120,23 @@ void BaseDelayProcessor::syncParametersFromAPVTS()
 {
     //if语句用来判断ID正确以及参数是否已经被注册
     if (auto* openParameter = mAPVTS.getRawParameterValue(openParamId))
-        mParameters.isOpen = openParameter->load() >= 0.5f;
+        isOpen = openParameter->load() >= 0.5f;
 
     if (auto* delayTimeParameter = mAPVTS.getRawParameterValue(delayTimeParamId))
-        mParameters.delayTimeMs = delayTimeParameter->load();
+        delayTimeMs = delayTimeParameter->load();
 
     if (auto* wetLevelParameter = mAPVTS.getRawParameterValue(wetLevelParamId))
-        mParameters.wetLevel = wetLevelParameter->load();
+        wetLevel = wetLevelParameter->load();
 
     if (auto* dryLevelParameter = mAPVTS.getRawParameterValue(dryLevelParamId))
-        mParameters.dryLevel = dryLevelParameter->load();
+        dryLevel = dryLevelParameter->load();
 
     if (auto* feedbackParameter = mAPVTS.getRawParameterValue(feedbackParamId))
-        mParameters.feedback = feedbackParameter->load();
+        feedback = feedbackParameter->load();
 }
 
 //初始化
 void BaseDelayProcessor::prepareToPlay(double sampleRate, int maximumBlockSize, int numChannels)
-{
-    mProcessor.prepareToPlay(sampleRate, maximumBlockSize, numChannels);
-    syncParametersFromAPVTS();
-    updateProcessorParameters();
-}
-
-void BaseDelayProcessor::DelayProcessor::prepareToPlay(
-    double sampleRate,
-    int maximumBlockSize,
-    int numChannels)
 {
     mCurrentSampleRate = sampleRate;
 
@@ -166,33 +156,29 @@ void BaseDelayProcessor::DelayProcessor::prepareToPlay(
     mSmoothedDryLevel.reset(sampleRate, 0.02);
     mSmoothedFeedback.reset(sampleRate, 0.02);
 
+    syncParametersFromAPVTS();
+    updateProcessorParameters();
 }
+
 
 void BaseDelayProcessor::updateProcessorParameters()
 {
-    mProcessor.setParameters(mParameters);
-}
-
-
-
-void BaseDelayProcessor::DelayProcessor::setParameters(const DelayParameters& parameters)
-{
+    
     mSmoothedDelayTimeMs.setTargetValue(
-        juce::jlimit(1.0f, maxDelayTimeMs, parameters.delayTimeMs));
+        juce::jlimit(1.0f, maxDelayTimeMs, delayTimeMs));
 
     mSmoothedWetLevel.setTargetValue(
-        juce::jlimit(0.0f, 1.0f, parameters.wetLevel));
+        juce::jlimit(0.0f, 1.0f, wetLevel));
 
     mSmoothedDryLevel.setTargetValue(
-        juce::jlimit(0.0f, 1.0f, parameters.dryLevel));
+        juce::jlimit(0.0f, 1.0f, dryLevel));
 
     mSmoothedFeedback.setTargetValue(
-        juce::jlimit(0.0f, 0.7f, parameters.feedback));
-
+        juce::jlimit(0.0f, 0.7f, feedback));
 }
 
 //得到实际的延迟样本数
-float BaseDelayProcessor::DelayProcessor::getDelaySamples(float delayTimeMs) const
+float BaseDelayProcessor::getDelaySamples(float delayTimeMs) const
 {
     const auto clampedDelayMs = juce::jlimit(1.0f, maxDelayTimeMs, delayTimeMs);
 
@@ -212,14 +198,14 @@ void BaseDelayProcessor::processDelay(
     syncParametersFromAPVTS();
     updateProcessorParameters();
 
-    if (!mParameters.isOpen)
+    if (!isOpen)
         return;
 
-    mProcessor.processBlock(buffer, startSample, numSamples, numChannels);
+    processBlock(buffer, startSample, numSamples, numChannels);
 }
 
 //核心效果器处理部分
-void BaseDelayProcessor::DelayProcessor::processBlock(
+void BaseDelayProcessor::processBlock(
     juce::AudioBuffer<float>& buffer,
     int startSample,
     int numSamples,

@@ -21,7 +21,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
             mBaseDelayProcessor(apvts)
                         
 {
-    mMidiInfo.sineTable = SineLookUpTable(bufferSize);
+    mMidiInfo.sineTable.clear();
+    SineLookUpTable(mMidiInfo.sineTable, bufferSize);
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
