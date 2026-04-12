@@ -7,7 +7,7 @@ float getLinearInterpolator(const float* data,int size, float index) ;
 
 //环形缓冲区避免下一个数越界函数
 template <typename T1, typename T2>
-T1 getCircularBufferIndex(T1 currentIndex, T2 size){
+inline T1 getCircularBufferIndex(T1 currentIndex, T2 size){
     if(currentIndex >= size) {
         return currentIndex - size;
     }

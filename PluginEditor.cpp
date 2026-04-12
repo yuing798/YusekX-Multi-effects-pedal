@@ -16,6 +16,13 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
         "outputGain", 
         outputGainSlider);
 
+    addAndMakeVisible(testButton);
+    testButton.setButtonText("midi test on");
+    testButton.onClick = [this]() { 
+        processorRef.isMidiTestOn = !processorRef.isMidiTestOn;
+        testButton.setButtonText(processorRef.isMidiTestOn ? "midi test off" : "midi test on");
+    };
+
     setSize (400, 300);
 }
 
@@ -39,4 +46,5 @@ void AudioPluginAudioProcessorEditor::resized()
     // This is generally where you'll want to lay out the positions of any
     // subcomponents in your editor..
     outputGainSlider.setBounds(10,10,100,50);
+    testButton.setBounds(120, 10, 100, 30);
 }

@@ -1,11 +1,11 @@
 #pragma once
 //该文件定义逻辑和声音处理类，包含了插件的核心功能实现
+#include <atomic>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "Utils/constants.h"
 #include "Utils/mathFunc.h"
 #include "Utils/table.h"
 #include "juce_audio_basics/juce_audio_basics.h"
-
 
 //==============================================================================
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
@@ -52,6 +52,8 @@ public:
 
     juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
 
+    std::atomic<bool> isMidiTestOn{false};//用于测试 MIDI 声源的开关
+
 private:
     //==============================================================================
     double mCurrentSampleRate{defaultSampleRate}; //当前采样率
@@ -68,6 +70,7 @@ private:
         float currentIndex{ 0.0f };
         std::vector<float> sineTable;
         juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> midiGain;
+        
 
         void testMidiInfo(juce::MidiBuffer& midiMessages, 
             int numSamples, 

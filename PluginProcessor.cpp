@@ -54,7 +54,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     mCurrentSampleRate = sampleRate; //保存当前采样率
 
-    mMidiInfo.midiGain.reset(sampleRate, 0.05); //设置平滑器的采样率和时间常数
+    mMidiInfo.midiGain.reset(sampleRate, 0.1); //设置平滑器的采样率和时间常数
     mMidiInfo.midiGain.setCurrentAndTargetValue(0.0f); //初始化平滑器的当前值和目标值
 }
 
@@ -104,8 +104,10 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     auto* channelDataLeft = buffer.getWritePointer(0);
     auto* channelDataRight = buffer.getWritePointer(1);
 
-
-    mMidiInfo.testMidiInfo(midiMessages, numSamples, channelDataLeft, channelDataRight, mCurrentSampleRate);
+    if (isMidiTestOn.load())
+    {
+        mMidiInfo.testMidiInfo(midiMessages, numSamples, channelDataLeft, channelDataRight, mCurrentSampleRate);
+    }
 
     //这个地方在存储数据，不改变实际听感
     auto gainDB = 
@@ -130,9 +132,9 @@ void AudioPluginAudioProcessor::mMidiInfo::testMidiInfo(
         const auto message = midiMessage.getMessage();
 
         if (message.isNoteOn())
-        {
-            currentIndex = 0.0f; //重置相位索引
+        {           
             isNoteOn = true;
+            currentIndex = 0.0f; //重置振荡器的相位索引
             noteNumber = message.getNoteNumber();
             velocity = message.getFloatVelocity(); //归一化力度
             midiGain.setTargetValue(
@@ -151,20 +153,32 @@ void AudioPluginAudioProcessor::mMidiInfo::testMidiInfo(
 
     for (int sample = 0; sample < numSamples; ++sample)
     {
-        if (isNoteOn)
+        const auto currentGain = midiGain.getNextValue(); //获取当前平滑增益值
+
+        if (isNoteOn || currentGain > 0.001f) 
         {
+            // indexStep/tableSize == phaseStep / 1
             const auto indexStep = 
                 phaseStep * sineTable.size();
-            currentIndex = getCircularBufferIndex(
-                currentIndex + indexStep, 
-                static_cast<int>(sineTable.size()));
+
+            //线性插值获取正弦波表的值
             const auto sineValue = 
                 getLinearInterpolator(sineTable.data(),
                     static_cast<int>(sineTable.size()),
                     currentIndex);
-            const auto smoothedVelocity = midiGain.getNextValue();
+
+            //更新当前索引，使用循环缓冲区索引函数确保索引在表的范围内
+            currentIndex = getCircularBufferIndex(
+                currentIndex + indexStep, 
+                static_cast<int>(sineTable.size()));
+
+            const auto smoothedVelocity = currentGain; //使用平滑增益值控制音量
             channelDataLeft[sample] = sineValue * smoothedVelocity;
             channelDataRight[sample] = sineValue * smoothedVelocity;
+        }
+        else{
+            channelDataLeft[sample] = 0.0f;
+            channelDataRight[sample] = 0.0f;
         }
     }
 }

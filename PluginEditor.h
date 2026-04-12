@@ -16,10 +16,16 @@ public:
 
 private:
     
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> outputGainAttachment;
+    std::unique_ptr<
+        juce::AudioProcessorValueTreeState::SliderAttachment> 
+        outputGainAttachment;
+
     juce::Slider outputGainSlider;
 
     AudioPluginAudioProcessor& processorRef;
+
+    juce::TextButton testButton { "midi test on" };
+    
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessorEditor)
 };
