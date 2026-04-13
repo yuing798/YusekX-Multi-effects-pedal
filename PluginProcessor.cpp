@@ -129,14 +129,14 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     if (isMidiTestOn.load())
     {
+        auto testMidiPlus = mMidiInfo.testMidiInfo(
+            midiMessages, 
+            numSamples, 
+            mCurrentSampleRate);
         for(int channel = 0; channel < totalNumOutputChannels; ++channel)
         {
             auto* channelData = buffer.getWritePointer(channel);
-            auto testMidiPlus = 
-                mMidiInfo.testMidiInfo(
-                    midiMessages, 
-                    numSamples, 
-                    mCurrentSampleRate);
+
             for (int sample = 0; sample < numSamples; ++sample)
             {
                 channelData[sample] += testMidiPlus[sample];
