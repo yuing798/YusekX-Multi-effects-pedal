@@ -218,7 +218,8 @@ std::vector<float> AudioPluginAudioProcessor::mMidiInfo::testMidiInfo(
                 static_cast<int>(sineTable.size()));
 
             const auto smoothedVelocity = currentGain; //使用平滑增益值控制音量
-            testMidiPlus[sample] = sineValue * smoothedVelocity;
+            testMidiPlus[sample] = sineValue * smoothedVelocity * 0.25f; 
+            //将正弦波值乘以力度和一个整体增益因子,防止削波失真
         }
         else{
             testMidiPlus[sample] = 0.0f;

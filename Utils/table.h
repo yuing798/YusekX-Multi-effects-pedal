@@ -3,3 +3,5 @@
 
 #include <vector>
 void SineLookUpTable(std::vector<float>& sineTable, int tableSize);
+
+float tanhLookUp(float x);

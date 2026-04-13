@@ -225,14 +225,13 @@ void BaseDelayProcessor::processBlock(
     if (mDelayBufferLength <= 0)
         return;
 
-    const auto delaySamples = getDelaySamples(mSmoothedDelayTimeMs.getNextValue());
-    const auto wetLevel = mSmoothedWetLevel.getNextValue();
-    const auto dryLevel = mSmoothedDryLevel.getNextValue();
-    const auto feedback = mSmoothedFeedback.getNextValue();
-
     for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)
     {   
-        
+        const auto delaySamples = getDelaySamples(mSmoothedDelayTimeMs.getNextValue());
+        const auto wetValue = mSmoothedWetLevel.getNextValue();
+        const auto dryValue = mSmoothedDryLevel.getNextValue();
+        const auto feedbackValue = mSmoothedFeedback.getNextValue();
+            
         //此处获得几百毫秒前的历史音频样本
         float readPosition = static_cast<float>(mWritePosition) - delaySamples;   
         readPosition = getCircularBufferIndex(readPosition, mDelayBufferLength);
@@ -249,8 +248,8 @@ void BaseDelayProcessor::processBlock(
                 mDelayBufferLength, 
                 readPosition);
 
-            delayData[mWritePosition] = drySample + delayedSample * feedback;
-            channelData[sampleIndex] = drySample * dryLevel + delayedSample * wetLevel;
+            delayData[mWritePosition] = drySample + delayedSample * feedbackValue;
+            channelData[sampleIndex] = drySample * dryValue + delayedSample * wetValue;
         }
 
         ++mWritePosition;
