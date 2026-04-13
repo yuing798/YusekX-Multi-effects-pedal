@@ -2,6 +2,7 @@
 //该文件定义逻辑和声音处理类，包含了插件的核心功能实现
 #include <atomic>
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <vector>
 #include "Utils/constants.h"
 #include "Utils/mathFunc.h"
 #include "Utils/table.h"
@@ -74,15 +75,13 @@ private:
         juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> midiGain;
         
 
-        void testMidiInfo(juce::MidiBuffer& midiMessages, 
+        std::vector<float> testMidiInfo(juce::MidiBuffer& midiMessages, 
             int numSamples, 
-            float* channelDataLeft, 
-            float* channelDataRight,
             double sampleRate);
     } mMidiInfo;
 
     BaseDelayProcessor mBaseDelayProcessor;
-    BaseTremoloProcessor mBaseTremoloProcessor;
+    //BaseTremoloProcessor mBaseTremoloProcessor;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };

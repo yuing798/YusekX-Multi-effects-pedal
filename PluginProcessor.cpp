@@ -19,8 +19,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
             nullptr, //撤销记录管理器
             "Parameters", //根节点标签名
             createParameterLayout()),
-            mBaseDelayProcessor(apvts),
-            mBaseTremoloProcessor(apvts)
+            mBaseDelayProcessor(apvts)
+            //mBaseTremoloProcessor(apvts)
                         
 {
     mMidiInfo.sineTable.clear();
@@ -54,7 +54,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout
         "dB"));//参数标签
 
     BaseDelayProcessor::createParameterLayout(parameters);
-    BaseTremoloProcessor::createParameterLayout(parameters);
+    //BaseTremoloProcessor::createParameterLayout(parameters);
 
     return { parameters.begin(), parameters.end() };
 }
@@ -72,7 +72,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     mMidiInfo.midiGain.setCurrentAndTargetValue(0.0f); //初始化平滑器的当前值和目标值
 
     mBaseDelayProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
-    mBaseTremoloProcessor.prepareToPlay(sampleRate);
+    //mBaseTremoloProcessor.prepareToPlay(sampleRate);
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -129,12 +129,19 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     if (isMidiTestOn.load())
     {
-        mMidiInfo.testMidiInfo(
-            midiMessages, 
-            numSamples, 
-            buffer.getWritePointer(0), 
-            buffer.getWritePointer(1), 
-            mCurrentSampleRate);
+        for(int channel = 0; channel < totalNumOutputChannels; ++channel)
+        {
+            auto* channelData = buffer.getWritePointer(channel);
+            auto testMidiPlus = 
+                mMidiInfo.testMidiInfo(
+                    midiMessages, 
+                    numSamples, 
+                    mCurrentSampleRate);
+            for (int sample = 0; sample < numSamples; ++sample)
+            {
+                channelData[sample] += testMidiPlus[sample];
+            }
+        }
     }
 
     mBaseDelayProcessor.processDelay(
@@ -143,11 +150,11 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         numSamples, 
         totalNumOutputChannels);
 
-    mBaseTremoloProcessor.processTremolo(
-        buffer,
-        0,
-        numSamples,
-        totalNumOutputChannels);
+    //mBaseTremoloProcessor.processTremolo(
+    //    buffer,
+    //    0,
+    //    numSamples,
+    //    totalNumOutputChannels);
 
     for (int channel = 0; channel < totalNumOutputChannels; ++channel)
     {
@@ -158,11 +165,9 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 }
 
 //这里他妈是我为了测试声音写的他妈的简单midi声源
-void AudioPluginAudioProcessor::mMidiInfo::testMidiInfo(
+std::vector<float> AudioPluginAudioProcessor::mMidiInfo::testMidiInfo(
     juce::MidiBuffer& midiMessages, 
     int numSamples, 
-    float* channelDataLeft, 
-    float* channelDataRight,
     double sampleRate)
 {
     for (const auto& midiMessage : midiMessages)
@@ -188,9 +193,11 @@ void AudioPluginAudioProcessor::mMidiInfo::testMidiInfo(
             midiGain.setTargetValue(0.0f); //当音符关闭时，将目标值设置为0以实现平滑衰减
         }
     }
-
+    std::vector<float> testMidiPlus(numSamples, 0.0f);//测试midi的输出应该直接加在通道上而不是覆盖原有的音频信号
+    
     for (int sample = 0; sample < numSamples; ++sample)
     {
+        
         const auto currentGain = midiGain.getNextValue(); //获取当前平滑增益值
 
         if (isNoteOn || currentGain > 0.001f) 
@@ -211,14 +218,13 @@ void AudioPluginAudioProcessor::mMidiInfo::testMidiInfo(
                 static_cast<int>(sineTable.size()));
 
             const auto smoothedVelocity = currentGain; //使用平滑增益值控制音量
-            channelDataLeft[sample] = sineValue * smoothedVelocity;
-            channelDataRight[sample] = sineValue * smoothedVelocity;
+            testMidiPlus[sample] = sineValue * smoothedVelocity;
         }
         else{
-            channelDataLeft[sample] = 0.0f;
-            channelDataRight[sample] = 0.0f;
+            testMidiPlus[sample] = 0.0f;
         }
     }
+    return testMidiPlus;
 }
 
 
