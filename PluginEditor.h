@@ -29,7 +29,7 @@ private:
     juce::TextButton testButton { "midi test on" };
 
     BaseDelayEditor mBaseDelayEditor;
-    //BaseTremoloEditor mBaseTremoloEditor;
+    BaseTremoloEditor mBaseTremoloEditor;
     
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessorEditor)

@@ -220,6 +220,15 @@ void BaseTremoloProcessor::prepareToPlay(double sampleRate)
         SineLookUpTable(mSineGainTable, bufferSize);
 
     syncParametersFromAPVTS();
+    updateProcessorParameters();
+}
+
+void BaseTremoloProcessor::updateProcessorParameters(){
+    mSmoothedFrequency.setTargetValue(mFrequency);
+    mSmoothedDepth.setTargetValue(mDepth);
+    mSmoothedMix.setTargetValue(mMix);
+    mSmoothedDutyCycle.setTargetValue(mDutyCycle);
+    mSmoothedPeakPosition.setTargetValue(mPeakPosition);
 }
 
 void BaseTremoloProcessor::processTremolo(
@@ -228,6 +237,7 @@ void BaseTremoloProcessor::processTremolo(
     int numSamples,
     int numChannels)
 {
+    updateProcessorParameters();
     syncParametersFromAPVTS();
 
     if (!mIsOpen)

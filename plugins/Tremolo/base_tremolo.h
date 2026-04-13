@@ -46,7 +46,7 @@ private:
     std::unique_ptr<SliderAttachment> mPeakPositionSliderAttachment;
     std::unique_ptr<ComboBoxAttachment> mWaveFormShapeAttachment;
 
-        juce::AudioProcessorValueTreeState& mAPVTS;
+    juce::AudioProcessorValueTreeState& mAPVTS;
     
 public:
 
@@ -57,10 +57,7 @@ public:
     void resized() override;
 
     void bindParameters();
-
-
-
-    
+   
 };
 
 class BaseTremoloProcessor{
@@ -105,6 +102,8 @@ public:
 
     explicit BaseTremoloProcessor(juce::AudioProcessorValueTreeState& apvts);
     ~BaseTremoloProcessor() = default;
+
+    void updateProcessorParameters();
 
     void syncParametersFromAPVTS();
     static void createParameterLayout(std::vector<std::unique_ptr<juce::RangedAudioParameter>>& parameters);
