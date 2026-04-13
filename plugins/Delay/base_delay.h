@@ -2,14 +2,10 @@
 
 #include <JuceHeader.h>
 #include <memory>
-#include "Utils/mathFunc.h"
 #include "Utils/constants.h"
 
-static constexpr const char* openParamId { "delayOpen" };
-static constexpr const char* delayTimeParamId { "delayTimeMs" };
-static constexpr const char* wetLevelParamId { "delayWetLevel" };
-static constexpr const char* dryLevelParamId { "delayDryLevel" };
-static constexpr const char* feedbackParamId { "delayFeedback" };
+
+
 
 class BaseDelayEditor final : public juce::Component
 {

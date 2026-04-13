@@ -19,7 +19,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
             nullptr, //撤销记录管理器
             "Parameters", //根节点标签名
             createParameterLayout()),
-            mBaseDelayProcessor(apvts)
+            mBaseDelayProcessor(apvts),
+            mBaseTremoloProcessor(apvts)
                         
 {
     mMidiInfo.sineTable.clear();
@@ -53,6 +54,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout
         "dB"));//参数标签
 
     BaseDelayProcessor::createParameterLayout(parameters);
+    BaseTremoloProcessor::createParameterLayout(parameters);
 
     return { parameters.begin(), parameters.end() };
 }
@@ -70,6 +72,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     mMidiInfo.midiGain.setCurrentAndTargetValue(0.0f); //初始化平滑器的当前值和目标值
 
     mBaseDelayProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+    mBaseTremoloProcessor.prepareToPlay(sampleRate);
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -138,6 +141,12 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         buffer, 
         0, 
         numSamples, 
+        totalNumOutputChannels);
+
+    mBaseTremoloProcessor.processTremolo(
+        buffer,
+        0,
+        numSamples,
         totalNumOutputChannels);
 
     for (int channel = 0; channel < totalNumOutputChannels; ++channel)

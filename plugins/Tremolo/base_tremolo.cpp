@@ -1,325 +1,358 @@
 #include "base_tremolo.h"
-#include "constants.h"
-#include "juce_audio_basics/juce_audio_basics.h"
+
+#include <cmath>
+
+#include "Utils/constants.h"
 #include "Utils/table.h"
 
-Tremolo::Tremolo(){
-    addAndMakeVisible(title);
-    title.setText("Tremolo", juce::dontSendNotification);
 
-    addAndMakeVisible(waveFormShape);
-    waveFormShape.addItem("Sine", Sine);
-    waveFormShape.addItem("Square", Square);
-    waveFormShape.addItem("Triangle", Triangle);
-    waveFormShape.setSelectedId(Sine);    
-    waveFormShape.onChange = [this]{
-        auto selectedId = waveFormShape.getSelectedId();
-        updateUI(selectedId);
-        resized(); // 重新布局组件
-    };
 
-    addAndMakeVisible(openCloseButton);
-    openCloseButton.onClick = [this]{
-        isOpen = !isOpen;
-        if(isOpen){
-            openCloseButton.setButtonText("Close");
-            isOpen = true;
-        }else{
-            openCloseButton.setButtonText("Open");
-            isOpen = false;
-        }
-    };
-
-    addAndMakeVisible(frequencyLabel);
-    frequencyLabel.setText("Frequency", juce::dontSendNotification);
-
-    addAndMakeVisible(depthLabel);
-    depthLabel.setText("Depth", juce::dontSendNotification);
-
-    addAndMakeVisible(mixLabel);
-    mixLabel.setText("Mix", juce::dontSendNotification);
-
-    addAndMakeVisible(frequencySlider);
-    frequencySlider.setRange(0.1, 20.0, 0.1);
-    frequencySlider.setValue(5.0);
-    frequencySlider.onValueChange = [this]{
-        const auto freq = static_cast<float>(frequencySlider.getValue());
-        smoothedFrequency.setTargetValue(freq);
-        
-    };
-
-    addAndMakeVisible(depthSlider);
-    depthSlider.setRange(0.0, 1.0, 0.01);
-    depthSlider.setValue(0.5);
-    depthSlider.onValueChange = [this]{
-        const auto depth = static_cast<float>(depthSlider.getValue());
-        smoothedDepth.setTargetValue(depth);
-       
-    };
-
-    addAndMakeVisible(mixSlider);
-    mixSlider.setRange(0.0, 1.0, 0.01);
-    mixSlider.setValue(0.5);
-    mixSlider.onValueChange = [this]{
-        const auto mix = static_cast<float>(mixSlider.getValue());
-        smoothedMix.setTargetValue(mix);
-    };
-
-    addAndMakeVisible(dutyCycleLabel);
-    dutyCycleLabel.setText("Duty Cycle", juce::dontSendNotification);
-
-    addAndMakeVisible(dutyCycleSlider);
-    dutyCycleSlider.setRange(0.01, 0.99, 0.01);
-    dutyCycleSlider.setValue(0.5);
-    dutyCycleSlider.onValueChange = [this]{
-        const auto duty = static_cast<float>(dutyCycleSlider.getValue());
-        smoothedDutyCycle.setTargetValue(duty);
-    };
-
-    addAndMakeVisible(peakPositionLabel);
-    peakPositionLabel.setText("Peak Position", juce::dontSendNotification);
-
-    addAndMakeVisible(peakPositionSlider);
-    peakPositionSlider.setRange(0.01, 0.99, 0.01);
-    peakPositionSlider.setValue(0.5);
-    peakPositionSlider.onValueChange = [this]{
-        const auto peak = static_cast<float>(peakPositionSlider.getValue());
-        peakPosition.setTargetValue(peak);
-    };
+BaseTremoloProcessor::BaseTremoloProcessor(juce::AudioProcessorValueTreeState& apvts)
+    : mAPVTS(apvts)
+{
 }
 
-void Tremolo::resized(){
+BaseTremoloEditor::BaseTremoloEditor(juce::AudioProcessorValueTreeState& apvts)
+    : mAPVTS(apvts)
+{
+    addAndMakeVisible(mTitle);
+    mTitle.setText("Tremolo Effect", juce::dontSendNotification);
 
+    addAndMakeVisible(mWaveFormShape);
+    mWaveFormShape.addItem("Sine", Sine);
+    mWaveFormShape.addItem("Square", Square);
+    mWaveFormShape.addItem("Triangle", Triangle);
+    mWaveFormShape.onChange = [this]
+    {
+        updateUI(mWaveFormShape.getSelectedId());
+        resized();
+    };
 
-    auto titleRect = juce::Rectangle<int> (
-        10,30,100, 50);
-    title.setBounds(titleRect);
-    
-    auto waveFormShapeSelect = juce::Rectangle<int>(
-        10, 90, 100, 50);
-    waveFormShape.setBounds(waveFormShapeSelect);
+    addAndMakeVisible(mOpenCloseButton);
+    mOpenCloseButton.setClickingTogglesState(true);
+    mOpenCloseButton.onClick = [this]
+    {
+        const auto isOpen = mOpenCloseButton.getToggleState();
+        mOpenCloseButton.setButtonText(isOpen ? "Close" : "Open");
+    };
 
-    auto openCloseButtonRect = juce::Rectangle<int>(
-        10, 150, 100, 50);
-    openCloseButton.setBounds(openCloseButtonRect);
+    addAndMakeVisible(mFrequencyLabel);
+    mFrequencyLabel.setText("Frequency", juce::dontSendNotification);
+    addAndMakeVisible(mFrequencySlider);
 
-    auto frequencyRect = juce::Rectangle<int>(
-        120, 10, 250, 30);
-    frequencySlider.setBounds(frequencyRect.removeFromRight(160));
-    frequencyLabel.setBounds(frequencyRect.removeFromLeft(90));
+    addAndMakeVisible(mDepthLabel);
+    mDepthLabel.setText("Depth", juce::dontSendNotification);
+    addAndMakeVisible(mDepthSlider);
 
-    auto depthRect = juce::Rectangle<int>(
-        120, 50, 250, 30);
-    depthSlider.setBounds(depthRect.removeFromRight(160));
-    depthLabel.setBounds(depthRect.removeFromLeft(90));
+    addAndMakeVisible(mMixLabel);
+    mMixLabel.setText("Mix", juce::dontSendNotification);
+    addAndMakeVisible(mMixSlider);
 
-    auto mixRect = juce::Rectangle<int>(
-        120, 90, 250, 30);
-    mixSlider.setBounds(mixRect.removeFromRight(160));
-    mixLabel.setBounds(mixRect.removeFromLeft(90));
-    
-    auto dutyCycleRect = juce::Rectangle<int>(
-        120, 130, 250, 30);
-    dutyCycleSlider.setBounds(dutyCycleRect.removeFromRight(160));
-    dutyCycleLabel.setBounds(dutyCycleRect.removeFromLeft(90));
+    addAndMakeVisible(mDutyCycleLabel);
+    mDutyCycleLabel.setText("Duty Cycle", juce::dontSendNotification);
+    addAndMakeVisible(mDutyCycleSlider);
 
-    auto peakPositionRect = juce::Rectangle<int>(
-        120, 170, 250, 30);
-    peakPositionSlider.setBounds(peakPositionRect.removeFromRight(160));
-    peakPositionLabel.setBounds(peakPositionRect.removeFromLeft(90));
+    addAndMakeVisible(mPeakPositionLabel);
+    mPeakPositionLabel.setText("Peak Position", juce::dontSendNotification);
+    addAndMakeVisible(mPeakPositionSlider);
+
+    bindParameters();
+    updateUI(mWaveFormShape.getSelectedId());
+    mOpenCloseButton.setButtonText(mOpenCloseButton.getToggleState() ? "Close" : "Open");
 }
 
-void Tremolo::updateUI(int waveformID){
-    //根据选择的波形类型更新 UI 或其他相关设置
-    //不同方波私有属性
+void BaseTremoloEditor::bindParameters()
+{
+    mOpenCloseButtonAttachment = std::make_unique<ButtonAttachment>(
+        mAPVTS,
+        BaseTremoloOpenId,
+        mOpenCloseButton);
 
-    switch(waveformID){
+    mFrequencySliderAttachment = std::make_unique<SliderAttachment>(
+        mAPVTS,
+        BaseTremoloFreqId,
+        mFrequencySlider);
+
+    mDepthSliderAttachment = std::make_unique<SliderAttachment>(
+        mAPVTS,
+        BaseTremoloDepthId,
+        mDepthSlider);
+
+    mMixSliderAttachment = std::make_unique<SliderAttachment>(
+        mAPVTS,
+        BaseTremoloMixId,
+        mMixSlider);
+
+    mDutyCycleSliderAttachment = std::make_unique<SliderAttachment>(
+        mAPVTS,
+        BaseTremoloDutyCycleId,
+        mDutyCycleSlider);
+
+    mPeakPositionSliderAttachment = std::make_unique<SliderAttachment>(
+        mAPVTS,
+        BaseTremoloPeakPositionId,
+        mPeakPositionSlider);
+
+    mWaveFormShapeAttachment = std::make_unique<ComboBoxAttachment>(
+        mAPVTS,
+        BaseTremoloWaveFormShapeId,
+        mWaveFormShape);
+}
+
+void BaseTremoloEditor::updateUI(int waveformID)
+{
+    const auto showDutyCycle = waveformID == Square;
+    const auto showPeakPosition = waveformID == Triangle;
+
+    mDutyCycleLabel.setVisible(showDutyCycle);
+    mDutyCycleSlider.setVisible(showDutyCycle);
+    mPeakPositionLabel.setVisible(showPeakPosition);
+    mPeakPositionSlider.setVisible(showPeakPosition);
+}
+
+void BaseTremoloEditor::resized()
+{
+    mTitle.setBounds(10, 10, 100, 40);
+    mWaveFormShape.setBounds(10, 55, 100, 30);
+    mOpenCloseButton.setBounds(10, 95, 100, 30);
+
+    mFrequencyLabel.setBounds(130, 10, 90, 30);
+    mFrequencySlider.setBounds(225, 10, 165, 30);
+
+    mDepthLabel.setBounds(130, 50, 90, 30);
+    mDepthSlider.setBounds(225, 50, 165, 30);
+
+    mMixLabel.setBounds(130, 90, 90, 30);
+    mMixSlider.setBounds(225, 90, 165, 30);
+
+    mDutyCycleLabel.setBounds(130, 130, 90, 30);
+    mDutyCycleSlider.setBounds(225, 130, 165, 30);
+
+    mPeakPositionLabel.setBounds(130, 170, 90, 30);
+    mPeakPositionSlider.setBounds(225, 170, 165, 30);
+}
+
+void BaseTremoloProcessor::createParameterLayout(
+    std::vector<std::unique_ptr<juce::RangedAudioParameter>>& parameters)
+{
+    parameters.push_back(std::make_unique<juce::AudioParameterBool>(
+        BaseTremoloOpenId,
+        "Tremolo Open",
+        false));
+
+    parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID { BaseTremoloFreqId, 1 },
+        "Tremolo Frequency",
+        juce::NormalisableRange<float>(0.1f, 20.0f, 0.1f),
+        5.0f));
+
+    parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID { BaseTremoloDepthId, 1 },
+        "Tremolo Depth",
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f),
+        0.5f));
+
+    parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID { BaseTremoloMixId, 1 },
+        "Tremolo Mix",
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f),
+        0.5f));
+
+    parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID { BaseTremoloDutyCycleId, 1 },
+        "Tremolo Duty Cycle",
+        juce::NormalisableRange<float>(0.01f, 0.99f, 0.01f),
+        0.5f));
+
+    parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID { BaseTremoloPeakPositionId, 1 },
+        "Tremolo Peak Position",
+        juce::NormalisableRange<float>(0.01f, 0.99f, 0.01f),
+        0.5f));
+
+    parameters.push_back(std::make_unique<juce::AudioParameterChoice>(
+        juce::ParameterID { BaseTremoloWaveFormShapeId, 1 },
+        "Tremolo Waveform",
+        juce::StringArray { "Sine", "Square", "Triangle" },
+        0));
+}
+
+void BaseTremoloProcessor::syncParametersFromAPVTS()
+{
+    if (auto* openParameter = mAPVTS.getRawParameterValue(BaseTremoloOpenId))
+        mIsOpen = openParameter->load() >= 0.5f;
+
+    if (auto* frequencyParameter = mAPVTS.getRawParameterValue(BaseTremoloFreqId))
+    {
+        mFrequency = frequencyParameter->load();
+
+    }
+
+    if (auto* depthParameter = mAPVTS.getRawParameterValue(BaseTremoloDepthId))
+    {
+        mDepth = depthParameter->load();
+      
+    }
+
+    if (auto* mixParameter = mAPVTS.getRawParameterValue(BaseTremoloMixId))
+        mMix = mixParameter->load();
+    if (auto* dutyCycleParameter = mAPVTS.getRawParameterValue(BaseTremoloDutyCycleId))
+        mDutyCycle = dutyCycleParameter->load();
+    if (auto* peakPositionParameter = mAPVTS.getRawParameterValue(BaseTremoloPeakPositionId))
+        mPeakPosition = peakPositionParameter->load();
+
+    if (auto* waveFormParameter = mAPVTS.getRawParameterValue(BaseTremoloWaveFormShapeId))
+       mWaveformID = waveFormParameter->load() + 1;
+}
+
+void BaseTremoloProcessor::prepareToPlay(double sampleRate)
+{
+    mCurrentSampleRate = sampleRate;
+
+    mSmoothedFrequency.reset(sampleRate, 0.01);
+    mSmoothedDepth.reset(sampleRate, 0.01);
+    mSmoothedMix.reset(sampleRate, 0.01);
+    mSmoothedDutyCycle.reset(sampleRate, 0.01);
+    mSmoothedDepthGain.reset(sampleRate, 0.002);
+    mSmoothedPeakPosition.reset(sampleRate, 0.01);
+
+    if (mSineGainTable.empty())
+        SineLookUpTable(mSineGainTable, bufferSize);
+
+    syncParametersFromAPVTS();
+}
+
+void BaseTremoloProcessor::processTremolo(
+    juce::AudioBuffer<float>& buffer,
+    int startSample,
+    int numSamples,
+    int numChannels)
+{
+    syncParametersFromAPVTS();
+
+    if (!mIsOpen)
+        return;
+
+
+    switch (mWaveformID)
+    {
         case Sine:
-            // 设置为正弦波相关的 UI 状态
-            dutyCycleLabel.setVisible(false);
-            dutyCycleSlider.setVisible(false);
+            processSineTremolo(buffer, startSample, numSamples, numChannels);
+            return;
 
-            peakPositionLabel.setVisible(false);
-            peakPositionSlider.setVisible(false);
-
-            break;
         case Square:
-            // 设置为方波相关的 UI 状态
-            dutyCycleLabel.setVisible(true);
-            dutyCycleSlider.setVisible(true);
+            processSquareTremolo(buffer, startSample, numSamples, numChannels);
+            return;
 
-            peakPositionLabel.setVisible(false);
-            peakPositionSlider.setVisible(false);
-            break;
-            
         case Triangle:
-            // 设置为三角波相关的 UI 状态
-            peakPositionLabel.setVisible(true);
-            peakPositionSlider.setVisible(true);
+            processTriangleTremolo(buffer, startSample, numSamples, numChannels);
+            return;
 
-            dutyCycleLabel.setVisible(false);
-            dutyCycleSlider.setVisible(false);
-            break;
+
         default:
-            break;
+            return;
     }
-
-    
 }
 
-void Tremolo::prepareToPlay(double sampleRate){
-
-    currentSampleRate = sampleRate;
-
-    smoothedFrequency.reset(currentSampleRate, 0.01);
-    smoothedFrequency.setCurrentAndTargetValue(5.0f);
-
-    smoothedDepth.reset(currentSampleRate, 0.01);
-    smoothedDepth.setCurrentAndTargetValue(0.5f);
-
-    smoothedMix.reset(currentSampleRate, 0.01);
-    smoothedMix.setCurrentAndTargetValue(0.5f);
-
-    smoothedDutyCycle.reset(currentSampleRate, 0.01);
-    smoothedDutyCycle.setCurrentAndTargetValue(0.5f);
-
-    depthGain.reset(currentSampleRate, 0.002);
-    depthGain.setCurrentAndTargetValue(1.0f);
-
-    peakPosition.reset(currentSampleRate, 0.01);
-    peakPosition.setCurrentAndTargetValue(0.5f);
-
-    SineLookUpTable(sineGainTable,bufferSize);
-}
-
-void Tremolo::processTremolo(
-    juce::AudioBuffer<float>& buffer, 
-    int startSample, 
-    int numSamples, 
+void BaseTremoloProcessor::processSineTremolo(
+    juce::AudioBuffer<float>& buffer,
+    int startSample,
+    int numSamples,
     int numChannels)
 {
-    if(!isOpen){
+    if (mSineGainTable.empty())
         return;
-    }
 
-    if(waveFormShape.getSelectedId() == Sine){
-        processSineTremolo(buffer, startSample, numSamples, numChannels);
-        return;
-    }else if(waveFormShape.getSelectedId() == Square){
-        processSquareTremolo(buffer, startSample, numSamples, numChannels);
-        return;
-    }else if(waveFormShape.getSelectedId() == Triangle){
-        processTriangleTremolo(buffer, startSample, numSamples, numChannels);
-        return;
-    }
-        
-}
+    for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)
+    {
+        const auto currentFrequency = mSmoothedFrequency.getNextValue();
+        const auto currentDepth = mSmoothedDepth.getNextValue();
+        const auto currentMix = mSmoothedMix.getNextValue();
 
+        const auto sineIndex = juce::jlimit(
+            0,
+            static_cast<int>(mSineGainTable.size()) - 1,
+            static_cast<int>(mSineTableIndex));
 
+        const auto lfoValue = mSineGainTable[static_cast<size_t>(sineIndex)];
+        const auto gain = 1.0f - (currentDepth * ((lfoValue + 1.0f) * 0.5f));
 
-void Tremolo::processSineTremolo(
-    juce::AudioBuffer<float>& buffer, 
-    int startSample, 
-    int numSamples, 
-    int numChannels)
-{
-
-    if(sineGainTable.empty()){
-       return;
-    }
-    for(int sampleIndex = 0;sampleIndex < numSamples;sampleIndex++){
-        float currentFrequency = smoothedFrequency.getNextValue();
-        float currentDepth = smoothedDepth.getNextValue();
-        float currentMix = smoothedMix.getNextValue();
-        
-        auto sineIndex = static_cast<int>(sineTableIndex);
-        float lfoValue = sineGainTable[sineIndex];
-        float depthGain = 1.0f - (currentDepth * ((lfoValue + 1.0f) / 2.0f));
-        // 将LFO值从[-1,1]映射到[0,1]
-
-        for(int channel = 0; channel < numChannels; channel++){
+        for (int channel = 0; channel < numChannels; ++channel)
+        {
             auto* channelData = buffer.getWritePointer(channel, startSample);
-            float wetSample = channelData[sampleIndex] * depthGain;
-            channelData[sampleIndex] = 
-                (wetSample * currentMix) + 
-                (channelData[sampleIndex] * (1.0f - currentMix));
+            const auto drySample = channelData[sampleIndex];
+            const auto wetSample = drySample * gain;
+            channelData[sampleIndex] = (wetSample * currentMix) + (drySample * (1.0f - currentMix));
         }
-        sineTableIndex += (currentFrequency / 
-            static_cast<float>(currentSampleRate)) * 
-            static_cast<float>(bufferSize);
-        if(sineTableIndex >= bufferSize){
-            sineTableIndex -= bufferSize;
-        }
-    }
 
+        mSineTableIndex += (currentFrequency / static_cast<float>(mCurrentSampleRate))
+            * static_cast<float>(mSineGainTable.size());
+
+        if (mSineTableIndex >= static_cast<float>(mSineGainTable.size()))
+            mSineTableIndex -= static_cast<float>(mSineGainTable.size());
+    }
 }
 
-void Tremolo::processSquareTremolo(
-    juce::AudioBuffer<float>& buffer, 
-    int startSample, 
-    int numSamples, 
+void BaseTremoloProcessor::processSquareTremolo(
+    juce::AudioBuffer<float>& buffer,
+    int startSample,
+    int numSamples,
     int numChannels)
 {
-    for(int sampleIndex = 0;sampleIndex < numSamples;sampleIndex++){
-        float currentFrequency = smoothedFrequency.getNextValue();
-        float currentDepth = smoothedDepth.getNextValue();
-        float currentMix = smoothedMix.getNextValue();
-        float currentDutyCycle = smoothedDutyCycle.getNextValue();
+    for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)
+    {
+        const auto currentFrequency = mSmoothedFrequency.getNextValue();
+        const auto currentDepth = mSmoothedDepth.getNextValue();
+        const auto currentMix = mSmoothedMix.getNextValue();
+        const auto currentDutyCycle = mSmoothedDutyCycle.getNextValue();
 
-        bool highState = (lfoPhase < currentDutyCycle);
-        if(highState){
-            depthGain.setTargetValue(1.0f);
-        }else{
-            depthGain.setTargetValue(1.0f - currentDepth);
-        }
+        const auto highState = mLfoPhase < currentDutyCycle;
+        mSmoothedDepthGain.setTargetValue(highState ? 1.0f : 1.0f - currentDepth);
+        const auto currentGain = mSmoothedDepthGain.getNextValue();
 
-        for(int channel = 0; channel < numChannels; channel++){
+        for (int channel = 0; channel < numChannels; ++channel)
+        {
             auto* channelData = buffer.getWritePointer(channel, startSample);
-            float wetSample = channelData[sampleIndex] * depthGain.getNextValue();
-            channelData[sampleIndex] = 
-                (wetSample * currentMix) + 
-                (channelData[sampleIndex] * (1.0f - currentMix));
+            const auto drySample = channelData[sampleIndex];
+            const auto wetSample = drySample * currentGain;
+            channelData[sampleIndex] = (wetSample * currentMix) + (drySample * (1.0f - currentMix));
         }
-        lfoPhase += (currentFrequency / static_cast<float>(currentSampleRate));
-        if(lfoPhase >= 1.0f){
-            lfoPhase -= 1.0f;
-        }
+
+        mLfoPhase += currentFrequency / static_cast<float>(mCurrentSampleRate);
+        if (mLfoPhase >= 1.0f)
+            mLfoPhase -= 1.0f;
     }
 }
 
-void Tremolo::processTriangleTremolo(
-    juce::AudioBuffer<float>& buffer, 
-    int startSample, 
-    int numSamples, 
+void BaseTremoloProcessor::processTriangleTremolo(
+    juce::AudioBuffer<float>& buffer,
+    int startSample,
+    int numSamples,
     int numChannels)
 {
-    for(int sampleIndex = 0;sampleIndex < numSamples;sampleIndex++){
-        float currentFrequency = smoothedFrequency.getNextValue();
-        float currentDepth = smoothedDepth.getNextValue();
-        float currentMix = smoothedMix.getNextValue();
-        float currentPeakPosition = peakPosition.getNextValue();
+    for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)
+    {
+        const auto currentFrequency = mSmoothedFrequency.getNextValue();
+        const auto currentDepth = mSmoothedDepth.getNextValue();
+        const auto currentMix = mSmoothedMix.getNextValue();
+        const auto currentPeakPosition = mSmoothedPeakPosition.getNextValue();
 
-        float lfoValue;
-        if(lfoPhase < currentPeakPosition){
-            lfoValue = 
-                (currentDepth / currentPeakPosition) * lfoPhase + 1.0f -currentDepth;
-        }else{
-            lfoValue = 
-                (currentDepth / (currentPeakPosition - 1.0f)) * (lfoPhase - 1) + 1.0f -currentDepth;
-        }
+        float gain = 1.0f;
+        if (mLfoPhase < currentPeakPosition)
+            gain = (currentDepth / currentPeakPosition) * mLfoPhase + 1.0f - currentDepth;
+        else
+            gain = (currentDepth / (currentPeakPosition - 1.0f)) * (mLfoPhase - 1.0f) + 1.0f - currentDepth;
 
-
-        for(int channel = 0; channel < numChannels; channel++){
+        for (int channel = 0; channel < numChannels; ++channel)
+        {
             auto* channelData = buffer.getWritePointer(channel, startSample);
-            float wetSample = channelData[sampleIndex] * lfoValue;
-            channelData[sampleIndex] = 
-                (wetSample * currentMix) + 
-                (channelData[sampleIndex] * (1.0f - currentMix));
+            const auto drySample = channelData[sampleIndex];
+            const auto wetSample = drySample * gain;
+            channelData[sampleIndex] = (wetSample * currentMix) + (drySample * (1.0f - currentMix));
         }
-        lfoPhase += (currentFrequency / static_cast<float>(currentSampleRate));
-        if(lfoPhase >= 1.0f){
-            lfoPhase -= 1.0f;
-        }
+
+        mLfoPhase += currentFrequency / static_cast<float>(mCurrentSampleRate);
+        if (mLfoPhase >= 1.0f)
+            mLfoPhase -= 1.0f;
     }
 }
-

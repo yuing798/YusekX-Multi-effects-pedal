@@ -1,4 +1,7 @@
 #include "base_delay.h"
+#include "Utils/mathFunc.h"
+#include "Utils/constants.h"
+
 //效果器构造函数
 BaseDelayProcessor::BaseDelayProcessor(juce::AudioProcessorValueTreeState& apvts)
     : mAPVTS(apvts){}
