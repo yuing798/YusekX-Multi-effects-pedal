@@ -2,6 +2,7 @@
 #include "PluginEditor.h"
 #include "Utils/mathFunc.h"
 #include "juce_audio_processors_headless/juce_audio_processors_headless.h"
+#include "plugins/Delay/base_delay.h"
 #include <vector>
 
 //==============================================================================
@@ -117,6 +118,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         buffer.clear (i, 0, buffer.getNumSamples());
 
     //这个地方在存储数据，不改变实际听感
+    //这个变量的作用和base_delay.cpp中的syncParametersFromAPVTS函数的作用相同，用来获取APVTS参数
     auto gainDB = 
         apvts.getRawParameterValue("outputGain");
     auto gainLinear = 

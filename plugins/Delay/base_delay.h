@@ -2,10 +2,8 @@
 
 #include <JuceHeader.h>
 #include <memory>
-#include "Utils/constants.h"
-#include "juce_audio_processors_headless/juce_audio_processors_headless.h"
-#include "juce_gui_basics/juce_gui_basics.h"
 #include "Utils/mathFunc.h"
+#include "Utils/constants.h"
 
 static constexpr const char* openParamId { "delayOpen" };
 static constexpr const char* delayTimeParamId { "delayTimeMs" };

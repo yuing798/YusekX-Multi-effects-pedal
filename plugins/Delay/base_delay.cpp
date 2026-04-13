@@ -1,7 +1,9 @@
 #include "base_delay.h"
-
+//效果器构造函数
 BaseDelayProcessor::BaseDelayProcessor(juce::AudioProcessorValueTreeState& apvts)
     : mAPVTS(apvts){}
+
+//效果器界面构造函数
 BaseDelayEditor::BaseDelayEditor(juce::AudioProcessorValueTreeState& apvts)
     : mAPVTS(apvts){
     addAndMakeVisible(mTitle);
@@ -37,6 +39,7 @@ BaseDelayEditor::BaseDelayEditor(juce::AudioProcessorValueTreeState& apvts)
     bindParameters();
 }
 
+//将ID和APVTS绑定
 void BaseDelayProcessor::createParameterLayout(
     std::vector<std::unique_ptr<juce::RangedAudioParameter>>& parameters)
 {
@@ -72,6 +75,7 @@ void BaseDelayProcessor::createParameterLayout(
 
 }
 
+//将UI滑块和APVTS参数绑定
 void BaseDelayEditor::bindParameters()
 {
     mOpenCloseAttachment = std::make_unique<ButtonAttachment>(
@@ -101,6 +105,7 @@ void BaseDelayEditor::bindParameters()
 
 }
 
+//组件位置
 void BaseDelayEditor::resized()
 {
     
@@ -116,6 +121,7 @@ void BaseDelayEditor::resized()
     mFeedbackSlider.setBounds(190, 130, 200, 30);
 }
 
+//将DSP参数和APVTS参数同步
 void BaseDelayProcessor::syncParametersFromAPVTS()
 {
     //if语句用来判断ID正确以及参数是否已经被注册
@@ -156,6 +162,7 @@ void BaseDelayProcessor::prepareToPlay(double sampleRate, int maximumBlockSize, 
     mSmoothedDryLevel.reset(sampleRate, 0.02);
     mSmoothedFeedback.reset(sampleRate, 0.02);
 
+    //初始化同步
     syncParametersFromAPVTS();
     updateProcessorParameters();
 }
@@ -195,6 +202,7 @@ void BaseDelayProcessor::processDelay(
     int numSamples,
     int numChannels)
 {
+    //逐buffer同步参数
     syncParametersFromAPVTS();
     updateProcessorParameters();
 
