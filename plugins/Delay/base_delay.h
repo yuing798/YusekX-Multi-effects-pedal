@@ -11,10 +11,6 @@ class BaseDelayEditor final : public juce::Component
 {
 private:
 
-
-	using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
-	using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
-
 	juce::Label mTitle;
 	juce::TextButton mOpenCloseButton { "Open" };
 

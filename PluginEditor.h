@@ -30,6 +30,7 @@ private:
 
     BaseDelayEditor mBaseDelayEditor;
     BaseTremoloEditor mBaseTremoloEditor;
+    SineSurroundEditor mSineSurroundEditor;
     
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessorEditor)

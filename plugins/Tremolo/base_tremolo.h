@@ -9,11 +9,9 @@ enum WaveFormID{
     Triangle,//三角波
 };
 
-
 class BaseTremoloEditor : public juce::Component{
 
 private:
-
 
     juce::TextButton mOpenCloseButton{"Open"};//开启关闭颤音效果的按钮
 
@@ -32,11 +30,6 @@ private:
     
     juce::Label mTitle;
     juce::ComboBox mWaveFormShape;//默认波形为正弦波
-
-    using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
-    using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
-    using ComboBoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
-
 
     std::unique_ptr<ButtonAttachment> mOpenCloseButtonAttachment;
     std::unique_ptr<SliderAttachment> mFrequencySliderAttachment;

@@ -5,9 +5,9 @@
 //线性插值函数
 float getLinearInterpolator(const float* data,int size, float index) ;
 
-//环形缓冲区避免下一个数越界函数
+//环形缓冲区避免索引越界函数
 template <typename T1, typename T2>
-inline T1 getCircularBufferIndex(T1 currentIndex, T2 size){
+T1 getCircularBufferIndex(T1 currentIndex, T2 size){
     if(currentIndex >= size) {
         return currentIndex - size;
     }

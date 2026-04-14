@@ -7,6 +7,7 @@
 #include "Utils/mathFunc.h"
 #include "Utils/table.h"
 #include "plugins/Delay/base_delay.h"
+#include "plugins/Delay/sine_surround.h"
 #include "plugins/Tremolo/base_tremolo.h"
 #include "plugins/plugins.h"
 
@@ -82,6 +83,7 @@ private:
 
     BaseDelayProcessor mBaseDelayProcessor;
     BaseTremoloProcessor mBaseTremoloProcessor;
+    SineSurroundProcessor mSineSurroundProcessor;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };

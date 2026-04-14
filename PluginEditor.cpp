@@ -7,7 +7,8 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (
     AudioPluginAudioProcessor& p)
     : AudioProcessorEditor (&p), processorRef (p),
     mBaseDelayEditor(p.getAPVTS()),
-    mBaseTremoloEditor(p.getAPVTS())
+    mBaseTremoloEditor(p.getAPVTS()),
+    mSineSurroundEditor(p.getAPVTS())
 {
     outputGainSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     outputGainSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, 20);
@@ -28,7 +29,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (
 
     addAndMakeVisible(mBaseDelayEditor);
     addAndMakeVisible(mBaseTremoloEditor);
-
+    addAndMakeVisible(mSineSurroundEditor);
 
     setSize (1200, 700);
     
@@ -57,4 +58,5 @@ void AudioPluginAudioProcessorEditor::resized()
     testButton.setBounds(120, 10, 100, 30);
     mBaseDelayEditor.setBounds(10, 70, 380, 200);
     mBaseTremoloEditor.setBounds(400, 70, 380, 200);
+    mSineSurroundEditor.setBounds(790, 70, 380, 200);
 }

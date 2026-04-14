@@ -3,6 +3,7 @@
 #include "Utils/mathFunc.h"
 #include "juce_audio_processors_headless/juce_audio_processors_headless.h"
 #include "plugins/Delay/base_delay.h"
+#include "plugins/Delay/sine_surround.h"
 #include <vector>
 
 //==============================================================================
@@ -20,7 +21,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
             "Parameters", //根节点标签名
             createParameterLayout()),
             mBaseDelayProcessor(apvts),
-            mBaseTremoloProcessor(apvts)
+            mBaseTremoloProcessor(apvts),
+            mSineSurroundProcessor(apvts)
                         
 {
     mMidiInfo.sineTable.clear();
@@ -55,6 +57,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout
 
     BaseDelayProcessor::createParameterLayout(parameters);
     BaseTremoloProcessor::createParameterLayout(parameters);
+    SineSurroundProcessor::createParameterLayout(parameters);
 
     return { parameters.begin(), parameters.end() };
 }
@@ -73,6 +76,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     mBaseDelayProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
     mBaseTremoloProcessor.prepareToPlay(sampleRate);
+    mSineSurroundProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -155,6 +159,12 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
        0,
        numSamples,
        totalNumOutputChannels);
+
+    mSineSurroundProcessor.processSineSurround(
+        buffer,
+        0,
+        numSamples,
+        totalNumOutputChannels);
 
     for (int channel = 0; channel < totalNumOutputChannels; ++channel)
     {

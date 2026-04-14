@@ -48,30 +48,30 @@ void BaseDelayProcessor::createParameterLayout(
 {
 
     parameters.push_back(std::make_unique<juce::AudioParameterBool>(
-        openParamId,
+        BaseDelayOpenId,
         "Delay Open",
         false));
 
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID { delayTimeParamId, 1 },
+        juce::ParameterID { BaseDelayTimeId, 1 },
         "Delay Time",
         juce::NormalisableRange<float>(50.0f, maxDelayTimeMs, 0.1f),
         350.0f));
 
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID { wetLevelParamId, 1 },
+        juce::ParameterID { BaseDelayWetId, 1 },
         "Delay Wet",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f),
         0.35f));
 
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID { dryLevelParamId, 1 },
+        juce::ParameterID { BaseDelayDryId, 1 },
         "Delay Dry",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f),
         1.0f));
 
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID { feedbackParamId, 1 },
+        juce::ParameterID { BaseDelayFeedbackId, 1 },
         "Delay Feedback",
         juce::NormalisableRange<float>(0.0f, 0.7f, 0.01f),
         0.5f));
@@ -83,27 +83,27 @@ void BaseDelayEditor::bindParameters()
 {
     mOpenCloseAttachment = std::make_unique<ButtonAttachment>(
         mAPVTS,
-        openParamId,
+        BaseDelayOpenId,
         mOpenCloseButton);
 
     mDelayTimeAttachment = std::make_unique<SliderAttachment>(
         mAPVTS,
-        delayTimeParamId,
+        BaseDelayTimeId,
         mDelayTimeSlider);
 
     mWetLevelAttachment = std::make_unique<SliderAttachment>(
         mAPVTS,
-        wetLevelParamId,
+        BaseDelayWetId,
         mWetLevelSlider);
 
     mDryLevelAttachment = std::make_unique<SliderAttachment>(
         mAPVTS,
-        dryLevelParamId,
+        BaseDelayDryId,
         mDryLevelSlider);
 
     mFeedbackAttachment = std::make_unique<SliderAttachment>(
         mAPVTS,
-        feedbackParamId,
+        BaseDelayFeedbackId,
         mFeedbackSlider);
 
 }
@@ -128,19 +128,19 @@ void BaseDelayEditor::resized()
 void BaseDelayProcessor::syncParametersFromAPVTS()
 {
     //if语句用来判断ID正确以及参数是否已经被注册
-    if (auto* openParameter = mAPVTS.getRawParameterValue(openParamId))
+    if (auto* openParameter = mAPVTS.getRawParameterValue(BaseDelayOpenId))
         isOpen = openParameter->load() >= 0.5f;
 
-    if (auto* delayTimeParameter = mAPVTS.getRawParameterValue(delayTimeParamId))
+    if (auto* delayTimeParameter = mAPVTS.getRawParameterValue(BaseDelayTimeId))
         delayTimeMs = delayTimeParameter->load();
 
-    if (auto* wetLevelParameter = mAPVTS.getRawParameterValue(wetLevelParamId))
+    if (auto* wetLevelParameter = mAPVTS.getRawParameterValue(BaseDelayWetId))
         wetLevel = wetLevelParameter->load();
 
-    if (auto* dryLevelParameter = mAPVTS.getRawParameterValue(dryLevelParamId))
+    if (auto* dryLevelParameter = mAPVTS.getRawParameterValue(BaseDelayDryId))
         dryLevel = dryLevelParameter->load();
 
-    if (auto* feedbackParameter = mAPVTS.getRawParameterValue(feedbackParamId))
+    if (auto* feedbackParameter = mAPVTS.getRawParameterValue(BaseDelayFeedbackId))
         feedback = feedbackParameter->load();
 }
 
@@ -173,18 +173,10 @@ void BaseDelayProcessor::prepareToPlay(double sampleRate, int maximumBlockSize, 
 
 void BaseDelayProcessor::updateProcessorParameters()
 {
-    
-    mSmoothedDelayTimeMs.setTargetValue(
-        juce::jlimit(1.0f, maxDelayTimeMs, delayTimeMs));
-
-    mSmoothedWetLevel.setTargetValue(
-        juce::jlimit(0.0f, 1.0f, wetLevel));
-
-    mSmoothedDryLevel.setTargetValue(
-        juce::jlimit(0.0f, 1.0f, dryLevel));
-
-    mSmoothedFeedback.setTargetValue(
-        juce::jlimit(0.0f, 0.7f, feedback));
+    mSmoothedDelayTimeMs.setTargetValue(delayTimeMs);
+    mSmoothedWetLevel.setTargetValue(wetLevel);
+    mSmoothedDryLevel.setTargetValue(dryLevel);
+    mSmoothedFeedback.setTargetValue(feedback);
 }
 
 //得到实际的延迟样本数
@@ -207,7 +199,7 @@ void BaseDelayProcessor::processDelay(
 {
     //逐buffer同步参数
     syncParametersFromAPVTS();
-    updateProcessorParameters();
+    updateProcessorParameters();//平滑度更新不用放在for循环中
 
     if (!isOpen)
         return;
