@@ -29,13 +29,14 @@ juce_add_plugin(Multi_effects_processor
     NEEDS_MIDI_INPUT TRUE             # Does the plugin need midi input?
     NEEDS_MIDI_OUTPUT FALSE              # Does the plugin need midi output?
     IS_MIDI_EFFECT FALSE                # Is this plugin a MIDI effect?
-    EDITOR_WANTS_KEYBOARD_FOCUS TRUE    # Does the editor need keyboard focus?
-    COPY_PLUGIN_AFTER_BUILD False        # Should the plugin be installed to a default location after building?
-    PLUGIN_MANUFACTURER_CODE Yuse               # A four-character manufacturer id with at least one upper-case character
-    PLUGIN_CODE K0yi                            # A unique four-character plugin id with exactly one upper-case character
-                                                # GarageBand 10.3 requires the first letter to be upper-case, and the remaining letters to be lower-case
-    FORMATS Standalone                  # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
-    PRODUCT_NAME "Multi_effects_processor")        # The name of the final executable, which can differ from the target name
+    EDITOR_WANTS_KEYBOARD_FOCUS TRUE   
+    COPY_PLUGIN_AFTER_BUILD False        
+    PLUGIN_MANUFACTURER_CODE Yuse               
+    PLUGIN_CODE K0yi                            
+                                                
+    FORMATS Standalone #VST3 AU #如果想要生成AU插件，取消注释AU，并确保在MacOS上构建
+                               #如果想要生成VST3插件，取消注释VST3 
+    PRODUCT_NAME "Multi_effects_processor")       
 
 target_sources(Multi_effects_processor
     PRIVATE
