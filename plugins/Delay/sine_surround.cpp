@@ -67,7 +67,7 @@ void SineSurroundProcessor::createParameterLayout(std::vector<std::unique_ptr<ju
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID { SineSurroundDepthId, 1 },
         "Sine Depth",
-        juce::NormalisableRange<float>(-maxSineDepthMs, maxSineDepthMs, 0.1f),
+        juce::NormalisableRange<float>(0, maxSineDepthMs, 0.1f),
         4.0f));
 
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
@@ -204,11 +204,13 @@ void SineSurroundProcessor::processBlock(
 	for(int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++){
 		const float currentDepthMs = mSmoothedSineDepthMs.getNextValue();
 		const float currentPhaseFrequencyHz = mSmoothedPhaseFrequencyHz.getNextValue();
+        const float currentDryLevel = mSmoothedDryLevel.getNextValue();
+        const float currentWetLevel = mSmoothedWetLevel.getNextValue();
 
 		const int sineIndex = static_cast<int>(mSineTableIndex);
 		const float sineValue = mSineLookUpTable[sineIndex];
 
-		float leftDelayMs = SineMsOffset;
+		float leftDelayMs = SineMsOffset - currentDepthMs * sineValue;
 		float rightDelayMs = SineMsOffset + currentDepthMs * sineValue;
 
 		float leftReadPosition =
@@ -232,13 +234,13 @@ void SineSurroundProcessor::processBlock(
 		leftChannelData[sampleIndex] = getLinearInterpolator(
 			leftDelayData,
             mDelayBufferLength,
-			leftReadPosition) * mSmoothedWetLevel.getCurrentValue() +
-            leftInputSample * mSmoothedDryLevel.getCurrentValue();
+			leftReadPosition) * currentWetLevel +
+            leftInputSample * currentDryLevel;
 		rightChannelData[sampleIndex] = getLinearInterpolator(
 			rightDelayData,
             mDelayBufferLength,
-			rightReadPosition) * mSmoothedWetLevel.getCurrentValue() +
-            rightInputSample * mSmoothedDryLevel.getCurrentValue();
+			rightReadPosition) * currentWetLevel +
+            rightInputSample * currentDryLevel;
 
 		mSineTableIndex +=
 			(currentPhaseFrequencyHz / static_cast<float>(mCurrentSampleRate)) *

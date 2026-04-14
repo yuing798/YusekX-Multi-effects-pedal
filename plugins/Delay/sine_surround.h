@@ -5,8 +5,8 @@
 #include <vector>
 #include "Utils/constants.h"
 
-static constexpr float maxSineDepthMs = 50.0f;
-static constexpr float SineMsOffset = 300.0f;
+static constexpr float maxSineDepthMs = 8.0f;
+static constexpr float SineMsOffset = 12.0f;
 
 class SineSurroundEditor final : public juce::Component
 {
