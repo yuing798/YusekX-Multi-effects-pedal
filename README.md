@@ -10,16 +10,24 @@
 
 目前已实现以下核心功能：
 1、效果器页面初始化
+
 2、基本延迟效果器
+
 3、基本tremolo颤音效果器
+
 4、正弦空间环绕效果器
 
 ## 项目框架
 pluginEditor文件：放置和UI线程相关的内容
+
 pluginProcessor文件：放置和DSP音频线程相关的内容
+
 Utils/:放置所有的工具函数，工具类，工具常量
+
 plugins/:放置所有的单块效果器
+
 copilot_docs/:给ai写代码时的上下文，当然你也可以看
+
 images/:顾名思义，图片
 
 ## 🛠 开发环境要求 (Prerequisites)
@@ -96,6 +104,7 @@ cmake --build --preset debug
 ### 📅 TODO List (后续计划)
 
 1、自主调节音色链顺序功能
+
 2、合唱chorus效果器
 
 ---
