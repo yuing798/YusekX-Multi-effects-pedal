@@ -5,8 +5,8 @@
 #include <vector>
 #include "Utils/constants.h"
 
-static constexpr float maxSineDepthMs = 8.0f;
-static constexpr float SineMsOffset = 12.0f;
+static constexpr float maxSineDepthMs = 50.0f;
+static constexpr float SineMsOffset = 300.0f;
 
 class SineSurroundEditor final : public juce::Component
 {
@@ -45,11 +45,11 @@ class SineSurroundProcessor
 {
 private:
 
-    bool isOpen { false };
-    float sineDepthMs { 4.0f };
-    float phaseFrequencyHz { 0.35f };
-    float dryLevel { 1.0f };
-    float wetLevel { 0.5f };
+    bool mIsOpen { false };
+    float mSineDepthMs { 4.0f };
+    float mPhaseFrequencyHz { 0.35f };
+    float mDryLevel { 1.0f };
+    float mWetLevel { 0.5f };
 
     juce::AudioBuffer<float> mDelayBuffer;
     std::vector<float> mSineLookUpTable;

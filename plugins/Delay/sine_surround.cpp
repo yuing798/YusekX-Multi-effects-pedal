@@ -13,8 +13,10 @@ SineSurroundEditor::SineSurroundEditor(juce::AudioProcessorValueTreeState& apvts
 	addAndMakeVisible(mTitle);
 	mTitle.setText("Sine Surround", juce::dontSendNotification);
 
+    mOpenCloseButton.setClickingTogglesState(true);
 	addAndMakeVisible(mOpenCloseButton);
 	mOpenCloseButton.onClick = [this]{
+
         const auto isOpen = mOpenCloseButton.getToggleState();
         mOpenCloseButton.setButtonText(isOpen ? "Close" : "Open");
 	};
@@ -35,6 +37,7 @@ SineSurroundEditor::SineSurroundEditor(juce::AudioProcessorValueTreeState& apvts
     mWetLevelLabel.setText("Wet", juce::dontSendNotification);
     addAndMakeVisible(mWetLevelSlider);
 
+    bindParameters();
 }
 
 void SineSurroundEditor::bindParameters()
@@ -89,19 +92,19 @@ void SineSurroundProcessor::createParameterLayout(std::vector<std::unique_ptr<ju
 void SineSurroundProcessor::syncParametersFromAPVTS()
 {
     if (auto* openParameter = mAPVTS.getRawParameterValue(SineSurroundOpenId))
-        isOpen = openParameter->load() >= 0.5f;
+        mIsOpen = openParameter->load() >= 0.5f;
 
     if (auto* sineDepthParameter = mAPVTS.getRawParameterValue(SineSurroundDepthId))
-        sineDepthMs = sineDepthParameter->load();
+        mSineDepthMs = sineDepthParameter->load();
 
     if (auto* phaseFrequencyParameter = mAPVTS.getRawParameterValue(SineSurroundPhaseFrequencyId))
-        phaseFrequencyHz = phaseFrequencyParameter->load();
+        mPhaseFrequencyHz = phaseFrequencyParameter->load();
 
     if (auto* dryLevelParameter = mAPVTS.getRawParameterValue(SineSurroundDryLevelId))
-        dryLevel = dryLevelParameter->load();
+        mDryLevel = dryLevelParameter->load();
 
     if (auto* wetLevelParameter = mAPVTS.getRawParameterValue(SineSurroundWetLevelId))
-        wetLevel = wetLevelParameter->load();
+        mWetLevel = wetLevelParameter->load();
 }
 
 void SineSurroundEditor::resized()
@@ -152,8 +155,9 @@ void SineSurroundProcessor::prepareToPlay(
     mSmoothedWetLevel.reset(sampleRate, 0.02);
     mSmoothedDryLevel.reset(sampleRate, 0.02);
 
-	mUpdateProcessorParameters();
     syncParametersFromAPVTS();
+	mUpdateProcessorParameters();
+
 }
 
 void SineSurroundProcessor::processSineSurround(
@@ -162,21 +166,23 @@ void SineSurroundProcessor::processSineSurround(
 	int numSamples,
 	int numChannels)
 {
-	if(!isOpen){
+    syncParametersFromAPVTS();
+    mUpdateProcessorParameters();
+
+	if(!mIsOpen){
 		return;
 	}
-    mUpdateProcessorParameters();
-    syncParametersFromAPVTS();
+
 
 	processBlock(buffer, startSample, numSamples, numChannels);
 }
 
 void SineSurroundProcessor::mUpdateProcessorParameters()
 {
-	mSmoothedSineDepthMs.setTargetValue(sineDepthMs);
-	mSmoothedPhaseFrequencyHz.setTargetValue(phaseFrequencyHz);
-	mSmoothedDryLevel.setTargetValue(dryLevel);
-	mSmoothedWetLevel.setTargetValue(wetLevel);
+	mSmoothedSineDepthMs.setTargetValue(mSineDepthMs);
+	mSmoothedPhaseFrequencyHz.setTargetValue(mPhaseFrequencyHz);
+	mSmoothedDryLevel.setTargetValue(mDryLevel);
+	mSmoothedWetLevel.setTargetValue(mWetLevel);
 }
 
 void SineSurroundProcessor::processBlock(
@@ -250,8 +256,5 @@ void SineSurroundProcessor::processBlock(
 //返回实际延迟样本数目
 float SineSurroundProcessor::mGetDelaySamples(float delayTimeMs) const
 {
-	return juce::jlimit(
-		1.0f,
-		static_cast<float>(mDelayBufferLength - 1),
-		(delayTimeMs / 1000.0f) * static_cast<float>(mCurrentSampleRate));
+	return (delayTimeMs / 1000.0f) * static_cast<float>(mCurrentSampleRate);
 }

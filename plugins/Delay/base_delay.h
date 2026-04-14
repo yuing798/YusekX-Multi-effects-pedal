@@ -4,9 +4,6 @@
 #include <memory>
 #include "Utils/constants.h"
 
-
-
-
 class BaseDelayEditor final : public juce::Component
 {
 private:

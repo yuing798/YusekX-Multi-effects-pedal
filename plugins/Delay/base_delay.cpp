@@ -198,6 +198,9 @@ void BaseDelayProcessor::processDelay(
     int numChannels)
 {
     //逐buffer同步参数
+    //sync函数如果放在isOpen后面会发生死锁问题，
+    // 因为当插件关闭时，APVTS参数会被重置为默认值，如果此时不进行同步，
+    // 参数值将无法更新，导致isOpen状态无法正确反映，从而无法退出循环。
     syncParametersFromAPVTS();
     updateProcessorParameters();//平滑度更新不用放在for循环中
 
