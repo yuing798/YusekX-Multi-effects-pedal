@@ -6,6 +6,9 @@
 #include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_gui_basics/juce_gui_basics.h"
 
+static constexpr float maxSineDepthMs = 8.0f;
+
+//三模拟通道合唱效果器
 class YOK3508Editor : public juce::Component
 {
 private:
@@ -61,6 +64,7 @@ private:
     int mDelayBufferLength { 0 };
     int mWritePosition { 0 };
     float mSineTableIndex { 0.0f };
+    juce::AudioBuffer<float> wetBuffer;
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedDepthMs { 4.0f };
@@ -77,25 +81,31 @@ private:
     juce::AudioProcessorValueTreeState& mAPVTS;
 
     float mGetDelaySamples(float delayTimeMs) const;
-  
-    void processBlock(
+
+    void processCertainChorus(
         juce::AudioBuffer<float>& buffer,
-        int startSample,
-        int numSamples,
-        int numChannels);
+        float* wetBufferData,
+        float phaseOffsetRad,//相位偏移弧度
+		int startSample,
+		int numSamples);	
+
 
 	void mUpdateProcessorParameters();
+
+    
 
 public:
     explicit YOK3508Processor(juce::AudioProcessorValueTreeState& apvts);
     ~YOK3508Processor() = default;
     static void createParameterLayout(std::vector<std::unique_ptr<juce::RangedAudioParameter>>& parameters);
     void syncParametersFromAPVTS();
-	void processBaseChorus(
-		juce::AudioBuffer<float>& buffer,
-		int startSample,
-		int numSamples,
-		int numChannels);	
+
+
+    void processThreeChannelsChorus(
+        juce::AudioBuffer<float>& buffer,
+        int startSample,
+        int numSamples,
+        int numChannels);
 
     void prepareToPlay(double sampleRate, int maximumBlockSize, int numChannels);
 };

@@ -1,5 +1,5 @@
 #pragma once
-
+#include "Utils/constants.h"
 //此处放置所有模块都需要用到的数学函数定义
 
 //线性插值函数
@@ -18,3 +18,5 @@ T1 getCircularBufferIndex(T1 currentIndex, T2 size){
         return currentIndex;
     }
 }
+//将弧度转化为索引步长
+float transformRadIntoIndexStep(float rad, int tableSize);

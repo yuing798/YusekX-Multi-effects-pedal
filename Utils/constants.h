@@ -33,6 +33,15 @@ static constexpr const char* SineSurroundPhaseFrequencyId = "sineSurroundPhaseFr
 static constexpr const char* SineSurroundDryLevelId = "sineSurroundDry";
 static constexpr const char* SineSurroundWetLevelId = "sineSurroundWet";
 
+//YOK3508:三模拟通道合唱效果器
+static constexpr const char* ThreeChannelsChorusOpenId = "3ChannelsChorusOpen";
+static constexpr const char* ThreeChannelsChorusDepthId = "3ChannelsChorusDepth";
+static constexpr const char* ThreeChannelsChorusRateId = "3ChannelsChorusRate";
+static constexpr const char* ThreeChannelsChorusMixId = "3ChannelsChorusMix";
+static constexpr const char* ThreeChannelsChorusFeedbackId = "3ChannelsChorusFeedback";
+static constexpr const char* ThreeChannelsChorusBaseDelayId = "3ChannelsChorusBaseDelay";
+
+
 //attachment别名
 using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
 using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;

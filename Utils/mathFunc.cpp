@@ -9,3 +9,8 @@ float getLinearInterpolator(const float* data,int size, float index){
     return (1.0f - fraction) * data[index1] + fraction * data[index2];
 }
 
+//将弧度转化为正弦索引步长
+float transformRadIntoIndexStep(float rad, int tableSize)
+{
+    return (rad / two_pi) * static_cast<float>(tableSize);
+}
