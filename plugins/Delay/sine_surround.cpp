@@ -218,6 +218,7 @@ void SineSurroundProcessor::processBlock(
 		float rightReadPosition =
 			static_cast<float>(mWritePosition) - mGetDelaySamples(rightDelayMs);
 
+        //调节索引防止越界
         leftReadPosition = getCircularBufferIndex(
             leftReadPosition, static_cast<float>(mDelayBufferLength));
         rightReadPosition = getCircularBufferIndex(

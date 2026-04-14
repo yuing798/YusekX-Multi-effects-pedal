@@ -8,6 +8,8 @@ static constexpr int numInputChannels{ 2 };
 static constexpr int numOutputChannels{ 2 };
 static constexpr float defaultSampleRate{ 44100.0f };
 
+//APVTS参数ID
+
 //基础延迟效果器ID
 static constexpr const char* BaseDelayOpenId { "baseDelayOpen" };
 static constexpr const char* BaseDelayTimeId { "baseDelayTimeMs" };
@@ -35,3 +37,6 @@ static constexpr const char* SineSurroundWetLevelId = "sineSurroundWet";
 using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
 using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
 using ComboBoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
+
+//产品代号
+//YOK3508:三模拟通道合唱效果器

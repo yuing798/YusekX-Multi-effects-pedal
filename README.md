@@ -30,6 +30,8 @@ copilot_docs/:给ai写代码时的上下文，当然你也可以看
 
 images/:顾名思义，图片
 
+看见代号请翻阅Utils/Constants.h查看具体效果器功能
+
 ## 🛠 开发环境要求 (Prerequisites)
 为了确保编译成功，你的电脑需要配置以下环境：
 

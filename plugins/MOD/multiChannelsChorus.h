@@ -2,54 +2,58 @@
 
 #include <JuceHeader.h>
 #include <memory>
-#include <vector>
 #include "Utils/constants.h"
+#include "juce_audio_basics/juce_audio_basics.h"
+#include "juce_gui_basics/juce_gui_basics.h"
 
-static constexpr float maxSineDepthMs = 8.0f;
-static constexpr float SineMsOffset = 12.0f;
-
-class SineSurroundEditor : public juce::Component
+class YOK3508Editor : public juce::Component
 {
 private:
 
     juce::Label mTitle;
     juce::TextButton mOpenCloseButton { "Open" };
 
-    juce::Slider mSineDepthSlider;
-    juce::Slider mPhaseFrequencySlider;
-    juce::Slider mDryLevelSlider;
-    juce::Slider mWetLevelSlider;
+    juce::Slider mDepthSlider;
+    juce::Slider mMixSlider;
+    juce::Slider mRateSlider;
+    juce::Slider mFeedbackSlider;
+    juce::Slider mBaseDelaySlider;
 
-    juce::Label mSineDepthLabel;
-    juce::Label mPhaseFrequencyLabel;
-    juce::Label mDryLevelLabel;
-    juce::Label mWetLevelLabel;
+    juce::Label mDepthLabel;
+    juce::Label mMixLabel;
+    juce::Label mRateLabel;
+    juce::Label mFeedbackLabel;
+    juce::Label mBaseDelayLabel;
+
 
     std::unique_ptr<ButtonAttachment> mOpenCloseAttachment;
-    std::unique_ptr<SliderAttachment> mSineDepthAttachment;
-    std::unique_ptr<SliderAttachment> mPhaseFrequencyAttachment;
-    std::unique_ptr<SliderAttachment> mDryLevelAttachment;
-    std::unique_ptr<SliderAttachment> mWetLevelAttachment;
+    std::unique_ptr<SliderAttachment> mDepthAttachment;
+    std::unique_ptr<SliderAttachment> mMixAttachment;
+    std::unique_ptr<SliderAttachment> mRateAttachment;
+    std::unique_ptr<SliderAttachment> mFeedbackAttachment;
+    std::unique_ptr<SliderAttachment> mBaseDelayAttachment;
+
 
     juce::AudioProcessorValueTreeState& mAPVTS;
 
     void bindParameters();
 
 public:
-    explicit SineSurroundEditor(juce::AudioProcessorValueTreeState& apvts);
-    ~SineSurroundEditor() override = default;
+    explicit YOK3508Editor(juce::AudioProcessorValueTreeState& apvts);
+    ~YOK3508Editor() override = default;
     void resized() override;
 };
 
-class SineSurroundProcessor
+class YOK3508Processor
 {
 private:
 
     bool mIsOpen { false };
-    float mSineDepthMs { 4.0f };
-    float mPhaseFrequencyHz { 0.35f };
-    float mDryLevel { 1.0f };
-    float mWetLevel { 0.5f };
+    float mDepthMs { 4.0f };
+    float mRateHz { 0.35f };
+    float mMix { 0.5f };
+    float mFeedback { 0.0f };
+    float mBaseDelayMs { 4.0f };
 
     juce::AudioBuffer<float> mDelayBuffer;
     std::vector<float> mSineLookUpTable;
@@ -59,20 +63,21 @@ private:
     float mSineTableIndex { 0.0f };
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
-        mSmoothedSineDepthMs { 4.0f };
+        mSmoothedDepthMs { 4.0f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
-        mSmoothedPhaseFrequencyHz { 0.35f };
+        mSmoothedMix { 0.5f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
-        mSmoothedDryLevel { 1.0f };
+        mSmoothedRateHz { 0.35f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
-        mSmoothedWetLevel { 0.5f };
+        mSmoothedFeedback { 0.0f };
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
+        mSmoothedBaseDelayMs { 4.0f };
+
 
     juce::AudioProcessorValueTreeState& mAPVTS;
 
     float mGetDelaySamples(float delayTimeMs) const;
-
-    
-    
+  
     void processBlock(
         juce::AudioBuffer<float>& buffer,
         int startSample,
@@ -82,11 +87,11 @@ private:
 	void mUpdateProcessorParameters();
 
 public:
-    explicit SineSurroundProcessor(juce::AudioProcessorValueTreeState& apvts);
-    ~SineSurroundProcessor() = default;
+    explicit YOK3508Processor(juce::AudioProcessorValueTreeState& apvts);
+    ~YOK3508Processor() = default;
     static void createParameterLayout(std::vector<std::unique_ptr<juce::RangedAudioParameter>>& parameters);
     void syncParametersFromAPVTS();
-	void processSineSurround(
+	void processBaseChorus(
 		juce::AudioBuffer<float>& buffer,
 		int startSample,
 		int numSamples,
