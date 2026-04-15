@@ -83,7 +83,7 @@ void YOK3508Processor::createParameterLayout(std::vector<std::unique_ptr<juce::R
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID { ThreeChannelsChorusRateId, 1 },
         "3Channel Chorus Rate",
-        juce::NormalisableRange<float>(0.01f, 5.0f, 0.01f),
+        juce::NormalisableRange<float>(0.01f, 1.0f, 0.01f),
         0.35f));
 
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
@@ -101,7 +101,7 @@ void YOK3508Processor::createParameterLayout(std::vector<std::unique_ptr<juce::R
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID { ThreeChannelsChorusBaseDelayId, 1 },
         "3Channel Chorus Base Delay",
-        juce::NormalisableRange<float>(0.1f, 20.0f, 0.1f),
+        juce::NormalisableRange<float>(0.1f, 12.0f, 0.1f),
         4.0f));
 }
 
