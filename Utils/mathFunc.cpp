@@ -14,3 +14,14 @@ float transformRadIntoIndexStep(float rad, int tableSize)
 {
     return (rad / two_pi) * static_cast<float>(tableSize);
 }
+
+//将弧度转化为毫秒数
+float transformRadIntoMs(float rad, float sampleRate){
+    return (two_pi / rad) * (1000.0f / sampleRate);
+}
+
+
+//将毫秒转换为样本数
+float transformMsIntoSamples(float ms, float sampleRate){
+    return (ms / 1000.0f) * sampleRate;
+}

@@ -80,12 +80,11 @@ private:
 
     juce::AudioProcessorValueTreeState& mAPVTS;
 
-    float mGetDelaySamples(float delayTimeMs) const;
-
     void processCertainChorus(
         juce::AudioBuffer<float>& buffer,
         float* wetBufferData,
-        float phaseOffsetRad,//相位偏移弧度
+        float phaseOffsetMs,//单支路左右通道偏移毫秒数(用来确定这条支路的具体声音方位)（时间轴）
+        float rightRadToLeftRad, //右声道相对于左声道的正弦波相位偏移弧度数（用来实现合唱的流动感）（信号轴）
 		int startSample,
 		int numSamples);	
 

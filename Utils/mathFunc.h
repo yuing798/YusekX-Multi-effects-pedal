@@ -20,3 +20,9 @@ T1 getCircularBufferIndex(T1 currentIndex, T2 size){
 }
 //将弧度转化为索引步长
 float transformRadIntoIndexStep(float rad, int tableSize);
+
+//将弧度变成毫秒数
+float transformRadIntoMs(float rad, float sampleRate);
+
+//将毫秒转换为样本数
+float transformMsIntoSamples(float ms, float sampleRate);

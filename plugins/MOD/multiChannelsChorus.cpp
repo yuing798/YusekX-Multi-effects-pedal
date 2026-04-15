@@ -183,6 +183,15 @@ void YOK3508Processor::prepareToPlay(
     wetBuffer.setSize(3, maximumBlockSize);
 }
 
+void YOK3508Processor::mUpdateProcessorParameters()
+{
+	mSmoothedDepthMs.setTargetValue(mDepthMs);
+	mSmoothedRateHz.setTargetValue(mRateHz);
+	mSmoothedMix.setTargetValue(mMix);
+	mSmoothedFeedback.setTargetValue(mFeedback);
+	mSmoothedBaseDelayMs.setTargetValue(mBaseDelayMs);
+}
+
 void YOK3508Processor::processThreeChannelsChorus(
 	juce::AudioBuffer<float>& buffer,
 	int startSample,
@@ -200,51 +209,40 @@ void YOK3508Processor::processThreeChannelsChorus(
 		return;
 	}
 
-
-
-	auto* leftChannelData = buffer.getWritePointer(0, startSample);
-	auto* rightChannelData = buffer.getWritePointer(1, startSample);
-	auto* leftDelayData = mDelayBuffer.getWritePointer(0);
-	auto* rightDelayData = mDelayBuffer.getWritePointer(1);
-
     //处理第一组声道（0和1），相位偏移为0
     processCertainChorus(buffer, 
         wetBuffer.getWritePointer(0), 
-        0.0f, startSample, numSamples);
+        0.0f, 0.0f, startSample, numSamples);
 
-    //相位偏移为120度（2*pi/3）
-
+    //相位偏移为120度（2*pi/3），右通道偏移左通道5°（two_pi/72）
     processCertainChorus(buffer, 
         wetBuffer.getWritePointer(1), 
-        two_pi / 3.0f, startSample, numSamples);
+        transformRadIntoMs(two_pi / 3.0f, mCurrentSampleRate), 
+        two_pi / 72.0f, 
+        startSample, numSamples);
 
-
-    //相位偏移为240度（4*pi/3）
+    //相位偏移为240度（4*pi/3），右通道偏移左通道10°（two_pi/36）
     processCertainChorus(buffer, 
         wetBuffer.getWritePointer(2), 
-        2.0f * two_pi / 3.0f, startSample, numSamples);
+        transformRadIntoMs(2.0f * two_pi / 3.0f, mCurrentSampleRate), 
+        two_pi / 36.0f, 
+        startSample, numSamples);
 
     
 }
 
-void YOK3508Processor::mUpdateProcessorParameters()
-{
-	mSmoothedDepthMs.setTargetValue(mDepthMs);
-	mSmoothedRateHz.setTargetValue(mRateHz);
-	mSmoothedMix.setTargetValue(mMix);
-	mSmoothedFeedback.setTargetValue(mFeedback);
-	mSmoothedBaseDelayMs.setTargetValue(mBaseDelayMs);
-}
 
-void YOK3508Processor::processBlock(
+
+void YOK3508Processor::processCertainChorus(
 	juce::AudioBuffer<float>& buffer,
+	float* wetBufferData,
+	float phaseOffsetMs,//单支路左右通道偏移毫秒数(用来确定这条支路的具体声音方位)（时间轴）
+    float rightRadToLeftRad, //右声道相对于左声道的正弦波相位偏移弧度数（用来实现合唱的流动感）（信号轴）
 	int startSample,
-	int numSamples,
-	int numChannels)
+	int numSamples)
 {
-
-
-
+    auto* leftChannelData = buffer.getReadPointer(0, startSample);
+    auto* rightChannelData = buffer.getReadPointer(1, startSample);
 
 	for(int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++){
 		const float currentDepthMs = mSmoothedDepthMs.getNextValue();
@@ -253,16 +251,21 @@ void YOK3508Processor::processBlock(
         const float currentFeedback = mSmoothedFeedback.getNextValue();
         const float currentBaseDelayMs = mSmoothedBaseDelayMs.getNextValue();
 
-		const int sineIndex = static_cast<int>(mSineTableIndex);
-		const float sineValue = mSineLookUpTable[sineIndex];
+        float sineValueLeft = getLinearInterpolator(mSineLookUpTable.data(), 
+            static_cast<int>(mSineLookUpTable.size()), 
+            mSineTableIndex);
 
-		float leftDelayMs = SineMsOffset - currentDepthMs * sineValue;
-		float rightDelayMs = SineMsOffset + currentDepthMs * sineValue;
+        float sineValueRight = getLinearInterpolator(mSineLookUpTable.data(), 
+            static_cast<int>(mSineLookUpTable.size()), 
+            mSineTableIndex + transformRadIntoIndexStep(rightRadToLeftRad, mSineLookUpTable.size()));
+
+		float leftDelayMs = currentBaseDelayMs + currentDepthMs * sineValueLeft + phaseOffsetMs / 2;
+		float rightDelayMs = currentBaseDelayMs + currentDepthMs * sineValueRight - phaseOffsetMs / 2;
 
 		float leftReadPosition =
-			static_cast<float>(mWritePosition) - mGetDelaySamples(leftDelayMs);
+			static_cast<float>(mWritePosition) - transformMsIntoSamples(leftDelayMs, mCurrentSampleRate);
 		float rightReadPosition =
-			static_cast<float>(mWritePosition) - mGetDelaySamples(rightDelayMs);
+			static_cast<float>(mWritePosition) - transformMsIntoSamples(rightDelayMs, mCurrentSampleRate);
 
         //调节索引防止越界
         leftReadPosition = getCircularBufferIndex(
@@ -302,10 +305,5 @@ void YOK3508Processor::processBlock(
 	}
 }
 
-//返回实际延迟样本数目
-float YOK3508Processor::mGetDelaySamples(float delayTimeMs) const
-{
-	return (delayTimeMs / 1000.0f) * static_cast<float>(mCurrentSampleRate);
-}
 
 
