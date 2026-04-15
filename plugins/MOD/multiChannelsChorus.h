@@ -6,7 +6,6 @@
 #include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_gui_basics/juce_gui_basics.h"
 
-static constexpr float maxSineDepthMs = 8.0f;
 
 //三模拟通道合唱效果器
 class YOK3508Editor : public juce::Component
@@ -50,6 +49,7 @@ public:
 class YOK3508Processor
 {
 private:
+    const float maxSineDepthMs = 8.0f;
 
     bool mIsOpen { false };
     float mDepthMs { 4.0f };
@@ -58,13 +58,29 @@ private:
     float mFeedback { 0.0f };
     float mBaseDelayMs { 4.0f };
 
-    juce::AudioBuffer<float> mDelayBuffer;
+    
     std::vector<float> mSineLookUpTable;
     double mCurrentSampleRate { defaultSampleRate };
     int mDelayBufferLength { 0 };
-    int mWritePosition { 0 };
-    float mSineTableIndex { 0.0f };
+    
+    
     juce::AudioBuffer<float> wetBuffer;
+
+    struct ChorusState
+    {
+        juce::AudioBuffer<float> mDelayBuffer;
+        int mWritePosition { 0 };
+        float mSineTableIndex { 0.0f };
+    };//每个合唱支路都有一个ChorusState，里面包含一个延迟缓冲区和写入位置以及正弦表索引
+
+    ChorusState chorusBranch1;
+    ChorusState chorusBranch2;
+    ChorusState chorusBranch3;
+
+    std::vector<float> mWetTable;
+    std::vector<float> mDryTable;
+
+    juce::AudioBuffer<float> finalWetBuffer;//最终的纯湿数据
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedDepthMs { 4.0f };
@@ -82,9 +98,11 @@ private:
 
     void processCertainChorus(
         juce::AudioBuffer<float>& buffer,
-        float* wetBufferData,
+        float* wetBufferDataLeft,
+        float* wetBufferDataRight,
         float phaseOffsetMs,//单支路左右通道偏移毫秒数(用来确定这条支路的具体声音方位)（时间轴）
         float rightRadToLeftRad, //右声道相对于左声道的正弦波相位偏移弧度数（用来实现合唱的流动感）（信号轴）
+        ChorusState &chorusState,
 		int startSample,
 		int numSamples);	
 

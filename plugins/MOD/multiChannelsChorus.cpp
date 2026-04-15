@@ -3,10 +3,12 @@
 #include "constants.h"
 #include "Utils/mathFunc.h"
 #include "juce_audio_basics/juce_audio_basics.h"
+#include <memory>
 YOK3508Processor::YOK3508Processor(juce::AudioProcessorValueTreeState& apvts)
     : mAPVTS(apvts)
 {
-
+    SineLookUpTable(mWetTable, bufferSize);
+    CosLookUpTable(mDryTable, bufferSize);
 }
 YOK3508Editor::YOK3508Editor(juce::AudioProcessorValueTreeState& apvts)
     : mAPVTS(apvts)
@@ -75,7 +77,7 @@ void YOK3508Processor::createParameterLayout(std::vector<std::unique_ptr<juce::R
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID { ThreeChannelsChorusDepthId, 1 },
         "3Channel Chorus Depth",
-        juce::NormalisableRange<float>(0, maxSineDepthMs, 0.1f),
+        juce::NormalisableRange<float>(0, 8.0f, 0.1f),
         4.0f));
 
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
@@ -163,11 +165,22 @@ void YOK3508Processor::prepareToPlay(
 		delayChannels = 2;
 	}
 
-	mDelayBuffer.setSize(delayChannels, mDelayBufferLength);
-	mDelayBuffer.clear();
+    
+    chorusBranch1.mDelayBuffer.setSize(delayChannels, mDelayBufferLength);
+    chorusBranch1.mDelayBuffer.clear();
+    chorusBranch1.mWritePosition = 0;
+    chorusBranch1.mSineTableIndex = 0.0f;
 
-	mWritePosition = 0;
-	mSineTableIndex = 0.0f;
+    chorusBranch2.mDelayBuffer.setSize(delayChannels, mDelayBufferLength);
+    chorusBranch2.mDelayBuffer.clear();
+    chorusBranch2.mWritePosition = 0;
+    chorusBranch2.mSineTableIndex = 0.0f;
+
+    chorusBranch3.mDelayBuffer.setSize(delayChannels, mDelayBufferLength);
+    chorusBranch3.mDelayBuffer.clear();
+    chorusBranch3.mWritePosition = 0;
+    chorusBranch3.mSineTableIndex = 0.0f;
+
 	SineLookUpTable(mSineLookUpTable,bufferSize);
 
 	mSmoothedDepthMs.reset(sampleRate, 0.02);
@@ -180,7 +193,12 @@ void YOK3508Processor::prepareToPlay(
 	mUpdateProcessorParameters();
 
     //不要在processBlock里创建buffer，这样会导致每次处理音频时都重新分配内存，效率极低
-    wetBuffer.setSize(3, maximumBlockSize);
+    wetBuffer.setSize(6, maximumBlockSize);
+    wetBuffer.clear();//wetBuffer用来存储三条支路的湿信号，每条支路两个通道，6=3*2
+    //三条支路，每条支路两个通道，6=3*2
+
+    finalWetBuffer.setSize(2, maximumBlockSize);
+    finalWetBuffer.clear();
 }
 
 void YOK3508Processor::mUpdateProcessorParameters()
@@ -212,62 +230,110 @@ void YOK3508Processor::processThreeChannelsChorus(
     //处理第一组声道（0和1），相位偏移为0
     processCertainChorus(buffer, 
         wetBuffer.getWritePointer(0), 
-        0.0f, 0.0f, startSample, numSamples);
+        wetBuffer.getWritePointer(1),
+        0.0f, 
+        0.0f, 
+        chorusBranch1, 
+        startSample, 
+        numSamples);
 
     //相位偏移为120度（2*pi/3），右通道偏移左通道5°（two_pi/72）
     processCertainChorus(buffer, 
-        wetBuffer.getWritePointer(1), 
+        wetBuffer.getWritePointer(2), 
+        wetBuffer.getWritePointer(3),
         transformRadIntoMs(two_pi / 3.0f, mCurrentSampleRate), 
         two_pi / 72.0f, 
-        startSample, numSamples);
+        chorusBranch2,
+        startSample, 
+        numSamples);
 
     //相位偏移为240度（4*pi/3），右通道偏移左通道10°（two_pi/36）
     processCertainChorus(buffer, 
-        wetBuffer.getWritePointer(2), 
+        wetBuffer.getWritePointer(4), 
+        wetBuffer.getWritePointer(5),
         transformRadIntoMs(2.0f * two_pi / 3.0f, mCurrentSampleRate), 
         two_pi / 36.0f, 
-        startSample, numSamples);
+        chorusBranch3,
+        startSample, 
+        numSamples);
 
-    
+    //进行加权
+    //0.707是-3dB，也就是半功率点
+    //而1.0^2 + 1.0^2 + 0.707^2 = 2.5
+    //缩放系数：1 / sqrt(2.5) ≈ 0.632，保证总功率不变
+    //最终：1.0 * 0.632 * 2 + 0.707 * 0.632 ≈ 1.0，保证总幅度不变
+    juce::FloatVectorOperations::addWithMultiply(finalWetBuffer.getWritePointer(0),
+        wetBuffer.getReadPointer(0), 0.447f, numSamples);
+    juce::FloatVectorOperations::addWithMultiply(finalWetBuffer.getWritePointer(0),
+        wetBuffer.getReadPointer(2), 0.632f, numSamples);
+    juce::FloatVectorOperations::addWithMultiply(finalWetBuffer.getWritePointer(0),
+        wetBuffer.getReadPointer(4), 0.632f, numSamples);
+    juce::FloatVectorOperations::addWithMultiply(finalWetBuffer.getWritePointer(1),
+        wetBuffer.getReadPointer(1), 0.447f, numSamples);
+    juce::FloatVectorOperations::addWithMultiply(finalWetBuffer.getWritePointer(1),
+        wetBuffer.getReadPointer(3), 0.632f, numSamples);
+    juce::FloatVectorOperations::addWithMultiply(finalWetBuffer.getWritePointer(1),
+        wetBuffer.getReadPointer(5), 0.632f, numSamples);
+
+    //混合干湿
+    for(int channel = 0; channel < 2; channel++){
+        const float currentMix = mSmoothedMix.getNextValue();
+        auto* channelData = buffer.getWritePointer(channel, startSample);
+        auto* wetData = finalWetBuffer.getWritePointer(channel);
+
+        //currentMix * bufferSize / 4原理：index / bufferSize == mix * 0.5pi / 2pi
+        juce::FloatVectorOperations::multiply(channelData, mDryTable[currentMix * bufferSize / 4], numSamples);
+        juce::FloatVectorOperations::multiply(wetData, mWetTable[currentMix * bufferSize / 4], numSamples);
+        juce::FloatVectorOperations::add(channelData, wetData, numSamples);
+    }
+
+
 }
 
 
 
 void YOK3508Processor::processCertainChorus(
 	juce::AudioBuffer<float>& buffer,
-	float* wetBufferData,
+	float* wetBufferDataLeft,//单支路左通道湿数据
+    float* wetBufferDataRight,//单支路右通道湿数据
 	float phaseOffsetMs,//单支路左右通道偏移毫秒数(用来确定这条支路的具体声音方位)（时间轴）
     float rightRadToLeftRad, //右声道相对于左声道的正弦波相位偏移弧度数（用来实现合唱的流动感）（信号轴）
+    ChorusState &chorusState,
 	int startSample,
 	int numSamples)
 {
-    auto* leftChannelData = buffer.getReadPointer(0, startSample);
-    auto* rightChannelData = buffer.getReadPointer(1, startSample);
-    auto* leftDelayData = mDelayBuffer.getWritePointer(0);
-    auto* rightDelayData = mDelayBuffer.getWritePointer(1);
+    //拷贝原始输入到wetBuffer中，后续对wetBuffer进行处理，最后再混回原始输入
+    auto* ChannelLeftData = buffer.getReadPointer(0, startSample);
+    auto* ChannelRightData = buffer.getReadPointer(1, startSample);
+
+
+    std::copy(ChannelLeftData, ChannelLeftData + numSamples, wetBufferDataLeft);
+    std::copy(ChannelRightData, ChannelRightData + numSamples, wetBufferDataRight);
+
+    auto* leftDelayData = chorusState.mDelayBuffer.getWritePointer(0);
+    auto* rightDelayData = chorusState.mDelayBuffer.getWritePointer(1);
 
 	for(int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++){
 		const float currentDepthMs = mSmoothedDepthMs.getNextValue();
 		const float currentRateHz = mSmoothedRateHz.getNextValue();
-        const float currentMix = mSmoothedMix.getNextValue();
         const float currentFeedback = mSmoothedFeedback.getNextValue();
         const float currentBaseDelayMs = mSmoothedBaseDelayMs.getNextValue();
 
         float sineValueLeft = getLinearInterpolator(mSineLookUpTable.data(), 
             static_cast<int>(mSineLookUpTable.size()), 
-            mSineTableIndex);
+            chorusState.mSineTableIndex);
 
         float sineValueRight = getLinearInterpolator(mSineLookUpTable.data(), 
             static_cast<int>(mSineLookUpTable.size()), 
-            mSineTableIndex + transformRadIntoIndexStep(rightRadToLeftRad, mSineLookUpTable.size()));
+           chorusState.mSineTableIndex + transformRadIntoIndexStep(rightRadToLeftRad, mSineLookUpTable.size()));
 
 		float leftDelayMs = currentBaseDelayMs + currentDepthMs * sineValueLeft + phaseOffsetMs / 2;
 		float rightDelayMs = currentBaseDelayMs + currentDepthMs * sineValueRight - phaseOffsetMs / 2;
 
 		float leftReadPosition =
-			static_cast<float>(mWritePosition) - transformMsIntoSamples(leftDelayMs, mCurrentSampleRate);
+			static_cast<float>(chorusState.mWritePosition) - transformMsIntoSamples(leftDelayMs, mCurrentSampleRate);
 		float rightReadPosition =
-			static_cast<float>(mWritePosition) - transformMsIntoSamples(rightDelayMs, mCurrentSampleRate);
+			static_cast<float>(chorusState.mWritePosition) - transformMsIntoSamples(rightDelayMs, mCurrentSampleRate);
 
         //调节索引防止越界
         leftReadPosition = getCircularBufferIndex(
@@ -276,33 +342,41 @@ void YOK3508Processor::processCertainChorus(
             rightReadPosition, static_cast<float>(mDelayBufferLength));
 
         //获取当前输入的左右声道样本(原始样本)
-		const float leftInputSample = leftChannelData[sampleIndex];
-		const float rightInputSample = rightChannelData[sampleIndex];
+		const float leftInputSample = wetBufferDataLeft[sampleIndex];
+		const float rightInputSample = wetBufferDataRight[sampleIndex];
 
-        //原始样本存储，待未来使用
-		leftDelayData[mWritePosition] = leftInputSample;
-		rightDelayData[mWritePosition] = rightInputSample;
-
-		leftChannelData[sampleIndex] = getLinearInterpolator(
+        //线性插值获取当前延迟样本（纯湿度）
+        float leftWetSample = getLinearInterpolator(
 			leftDelayData,
             mDelayBufferLength,
-			leftReadPosition) * currentWetLevel +
-            leftInputSample * currentDryLevel;
-		rightChannelData[sampleIndex] = getLinearInterpolator(
+			leftReadPosition) ;
+
+        float rightWetSample = getLinearInterpolator(
 			rightDelayData,
             mDelayBufferLength,
-			rightReadPosition) * currentWetLevel +
-            rightInputSample * currentDryLevel;
+			rightReadPosition) ;
+            //这里只计算纯湿度，不要计算干湿度，干湿度等三支路都算完后再进行
+            //要加入反馈度必须先读，再算反馈度，再写入延迟缓冲区
+            //否则反馈度无法正确反映当前的延迟样本
 
-		mSineTableIndex +=
-			(currentPhaseFrequencyHz / static_cast<float>(mCurrentSampleRate)) *
+        float leftWriteSample = leftInputSample + leftWetSample * currentFeedback;
+        float rightWriteSample = rightInputSample + rightWetSample * currentFeedback;
+
+        //原始样本存储，待未来使用
+        //限制反馈后的样本值在-2到2之间，防止过度失真导致的爆音
+		leftDelayData[chorusState.mWritePosition] = juce::jlimit(-2.0f, 2.0f, leftWriteSample);
+		rightDelayData[chorusState.mWritePosition] = juce::jlimit(-2.0f, 2.0f, rightWriteSample);
+
+		chorusState.mSineTableIndex +=
+			(currentRateHz / static_cast<float>(mCurrentSampleRate)) *
 			static_cast<float>(mSineLookUpTable.size());
 
-        mSineTableIndex = getCircularBufferIndex(
-            mSineTableIndex, static_cast<float>(mSineLookUpTable.size()));
+        //getCircularBufferIndex用来防止索引越界
+        chorusState.mSineTableIndex = getCircularBufferIndex(
+            chorusState.mSineTableIndex, static_cast<float>(mSineLookUpTable.size()));
 
-		mWritePosition++;
-        mWritePosition = getCircularBufferIndex(mWritePosition, mDelayBufferLength);
+		chorusState.mWritePosition++;
+        chorusState.mWritePosition = getCircularBufferIndex(chorusState.mWritePosition, mDelayBufferLength);
 
 	}
 }

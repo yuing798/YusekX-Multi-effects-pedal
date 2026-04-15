@@ -2,6 +2,7 @@
 //该文件定义插件的用户界面类，包含了插件的外观和交互功能实现
 #include "PluginProcessor.h"
 #include "plugins/Delay/base_delay.h"
+#include "plugins/MOD/multiChannelsChorus.h"
 #include "plugins/Tremolo/base_tremolo.h"
 #include "plugins/plugins.h"
 
@@ -31,6 +32,7 @@ private:
     BaseDelayEditor mBaseDelayEditor;
     BaseTremoloEditor mBaseTremoloEditor;
     SineSurroundEditor mSineSurroundEditor;
+    YOK3508Editor mYOK3508Editor;
     
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessorEditor)

@@ -7,5 +7,5 @@ void SineLookUpTable(std::vector<float>& sineTable, int tableSize);
 
 float tanhLookUp(float x);
 
-//使用cos和sin查表法保证非相干信号相加为1，比如wet^2 + dry^2 = 1
-std::pair<std::vector<float>, std::vector<float>> createCosSinLookUpTables(int tableSize);
+//创建cos余弦表
+void CosLookUpTable(std::vector<float>& cosTable, int tableSize);

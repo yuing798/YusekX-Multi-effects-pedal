@@ -22,7 +22,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
             createParameterLayout()),
             mBaseDelayProcessor(apvts),
             mBaseTremoloProcessor(apvts),
-            mSineSurroundProcessor(apvts)
+            mSineSurroundProcessor(apvts),
+            mYOK3508Processor(apvts)
                         
 {
     mMidiInfo.sineTable.clear();
@@ -58,6 +59,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     BaseDelayProcessor::createParameterLayout(parameters);
     BaseTremoloProcessor::createParameterLayout(parameters);
     SineSurroundProcessor::createParameterLayout(parameters);
+    YOK3508Processor::createParameterLayout(parameters);
 
     return { parameters.begin(), parameters.end() };
 }
@@ -77,6 +79,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     mBaseDelayProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
     mBaseTremoloProcessor.prepareToPlay(sampleRate);
     mSineSurroundProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+    mYOK3508Processor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -166,11 +169,18 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         numSamples,
         totalNumOutputChannels);
 
+    mYOK3508Processor.processThreeChannelsChorus(
+        buffer,
+        0,
+        numSamples,
+        totalNumOutputChannels);
+
     for (int channel = 0; channel < totalNumOutputChannels; ++channel)
     {
         buffer.applyGain(channel, 0, numSamples, gainLinear);
         
     }
+
 
 }
 
