@@ -57,6 +57,8 @@ private:
     float mMix { 0.5f };
     float mFeedback { 0.0f };
     float mBaseDelayMs { 4.0f };
+    float currentMix;//因为mix不在每个采样点都变化，
+    // 所以不需要在processCertainChorus函数里使用，但是要在samples循环中更新
 
     
     std::vector<float> mSineLookUpTable;
