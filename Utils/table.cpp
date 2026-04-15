@@ -20,3 +20,16 @@ float tanhLookUp(float x){
     if (x > 3.0f) return 1.0f;
     return x * (27.0f + x * x) / (27.0f + 9.0f * x * x);
 }
+
+std::pair<std::vector<float>, std::vector<float>> createCosSinLookUpTables(int tableSize){
+    std::vector<float> cosTable(tableSize);
+    std::vector<float> sinTable(tableSize);
+
+    for(int index = 0; index < tableSize; index++){
+        float phase = (static_cast<float>(index) / tableSize) * two_pi;
+        cosTable[index] = std::cos(phase);
+        sinTable[index] = std::sin(phase);
+    }
+
+    return {cosTable, sinTable};
+}

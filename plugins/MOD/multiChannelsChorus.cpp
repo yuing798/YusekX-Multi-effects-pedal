@@ -243,6 +243,8 @@ void YOK3508Processor::processCertainChorus(
 {
     auto* leftChannelData = buffer.getReadPointer(0, startSample);
     auto* rightChannelData = buffer.getReadPointer(1, startSample);
+    auto* leftDelayData = mDelayBuffer.getWritePointer(0);
+    auto* rightDelayData = mDelayBuffer.getWritePointer(1);
 
 	for(int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++){
 		const float currentDepthMs = mSmoothedDepthMs.getNextValue();
