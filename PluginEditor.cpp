@@ -61,5 +61,5 @@ void AudioPluginAudioProcessorEditor::resized()
     mBaseDelayEditor.setBounds(10, 70, 380, 200);
     mBaseTremoloEditor.setBounds(400, 70, 380, 200);
     mSineSurroundEditor.setBounds(790, 70, 380, 200);
-    mYOK3508Editor.setBounds(10, 280, 380, 200);
+    mYOK3508Editor.setBounds(10, 280, 380, 300);
 }

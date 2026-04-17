@@ -20,12 +20,14 @@ private:
     juce::Slider mRateSlider;
     juce::Slider mFeedbackSlider;
     juce::Slider mBaseDelaySlider;
+    juce::Slider mPhaseOffsetSlider;
 
     juce::Label mDepthLabel;
     juce::Label mMixLabel;
     juce::Label mRateLabel;
     juce::Label mFeedbackLabel;
     juce::Label mBaseDelayLabel;
+    juce::Label mPhaseOffsetLabel;
 
 
     std::unique_ptr<ButtonAttachment> mOpenCloseAttachment;
@@ -34,6 +36,7 @@ private:
     std::unique_ptr<SliderAttachment> mRateAttachment;
     std::unique_ptr<SliderAttachment> mFeedbackAttachment;
     std::unique_ptr<SliderAttachment> mBaseDelayAttachment;
+    std::unique_ptr<SliderAttachment> mPhaseOffsetAttachment;
 
 
     juce::AudioProcessorValueTreeState& mAPVTS;
@@ -57,7 +60,10 @@ private:
     float mMix { 0.5f };
     float mFeedback { 0.0f };
     float mBaseDelayMs { 4.0f };
-    float currentMix;//因为mix不在每个采样点都变化，
+    float mPhaseOffsetMs { 0.0f };
+    float currentMix{0.0f};//因为mix不在每个采样点都变化，
+    // 所以不需要在processCertainChorus函数里使用，但是要在samples循环中更新
+    float currentPhaseOffsetMs{0.0f};//因为phaseOffset不在每个采样点都变化，
     // 所以不需要在processCertainChorus函数里使用，但是要在samples循环中更新
 
     
@@ -65,11 +71,9 @@ private:
     double mCurrentSampleRate { defaultSampleRate };
     int mDelayBufferLength { 0 };
     
-    
-    juce::AudioBuffer<float> wetBuffer;
-
     struct ChorusState
     {
+        juce::AudioBuffer<float> wetBuffer;
         juce::AudioBuffer<float> mDelayBuffer;
         int mWritePosition { 0 };
         float mSineTableIndex { 0.0f };
@@ -94,7 +98,10 @@ private:
         mSmoothedFeedback { 0.0f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedBaseDelayMs { 4.0f };
-
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
+        mSmoothedPhaseOffsetMs { 0.0f };
+    //哈斯效应只和具体的毫秒数有关，和相位无关
+        //单支路左右通道偏移毫秒数(用来确定这条支路的具体声音方位)（时间轴）
 
     juce::AudioProcessorValueTreeState& mAPVTS;
 
@@ -102,7 +109,7 @@ private:
         juce::AudioBuffer<float>& buffer,
         float* wetBufferDataLeft,
         float* wetBufferDataRight,
-        float phaseOffsetMs,//单支路左右通道偏移毫秒数(用来确定这条支路的具体声音方位)（时间轴）
+        float phaseOffsetMs, //单支路左右通道偏移毫秒数(用来确定这条支路的具体声音方位)（时间轴）
         float rightRadToLeftRad, //右声道相对于左声道的正弦波相位偏移弧度数（用来实现合唱的流动感）（信号轴）
         ChorusState &chorusState,
 		int startSample,

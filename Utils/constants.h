@@ -40,6 +40,7 @@ static constexpr const char* ThreeChannelsChorusRateId = "3ChannelsChorusRate";
 static constexpr const char* ThreeChannelsChorusMixId = "3ChannelsChorusMix";
 static constexpr const char* ThreeChannelsChorusFeedbackId = "3ChannelsChorusFeedback";
 static constexpr const char* ThreeChannelsChorusBaseDelayId = "3ChannelsChorusBaseDelay";
+static constexpr const char* ThreeChannelsChorusPhaseOffsetId = "3ChannelsChorusPhaseOffset";
 
 
 //attachment别名
