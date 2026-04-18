@@ -14,10 +14,19 @@ private:
     juce::TextButton mOpenCloseButton { "Open" };
 
     juce::Slider mDepthSlider;
+    juce::Slider mDriveSlider;
+    juce::Slider mOutputLevelSlider;
+    juce::Slider mMixSlider;
 
     juce::Label mDepthLabel;
+    juce::Label mDriveLabel;
+    juce::Label mOutputLevelLabel;
+    juce::Label mMixLabel;
 
     std::unique_ptr<ButtonAttachment> mOpenCloseAttachment;
+    std::unique_ptr<SliderAttachment> mDriveAttachment;
+    std::unique_ptr<SliderAttachment> mOutputLevelAttachment;
+    std::unique_ptr<SliderAttachment> mMixAttachment;
 
     juce::AudioProcessorValueTreeState& mAPVTS;
 
@@ -35,12 +44,14 @@ private:
     float mCurrentSampleRate{defaultSampleRate};
 
     bool mIsOpen { false };
-
-    juce::AudioBuffer<float> finalWetBuffer;//最终的纯湿数据
+    float mDrive { 4.0f };
+    float mOutputLevel { 0.2f };
+    float mMix { 0.5f };
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
-        mSmoothedDepthMs { 4.0f };
-
+        mSmoothedDrive { 4.0f };
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
+        mSmoothedOutputLevel { 0.2f };
 
     juce::AudioProcessorValueTreeState& mAPVTS;
 

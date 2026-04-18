@@ -8,8 +8,7 @@
 YOK3508Processor::YOK3508Processor(juce::AudioProcessorValueTreeState& apvts)
     : mAPVTS(apvts)
 {
-    SineLookUpTable(mWetTable, bufferSize);
-    CosLookUpTable(mDryTable, bufferSize);
+
 }
 YOK3508Editor::YOK3508Editor(juce::AudioProcessorValueTreeState& apvts)
     : mAPVTS(apvts)
@@ -201,8 +200,6 @@ void YOK3508Processor::prepareToPlay(
     chorusBranch3.mWritePosition = 0;
     chorusBranch3.mSineTableIndex = 0.0f;
 
-	SineLookUpTable(mSineLookUpTable,bufferSize);
-
 	mSmoothedDepthMs.reset(sampleRate, 0.02);
 	mSmoothedMix.reset(sampleRate, 0.02);
     mSmoothedRateHz.reset(sampleRate, 0.02);
@@ -241,7 +238,9 @@ void YOK3508Processor::processThreeChannelsChorus(
 	juce::AudioBuffer<float>& buffer,
 	int startSample,
 	int numSamples,
-	int numChannels)
+	int numChannels,
+    const std::vector<float>& sineTable,
+    const std::vector<float>& cosTable)
 {
     syncParametersFromAPVTS();
     mUpdateProcessorParameters();
@@ -255,7 +254,7 @@ void YOK3508Processor::processThreeChannelsChorus(
     chorusBranch2.wetBuffer.clear();
     chorusBranch3.wetBuffer.clear();
 
-	if(mDelayBufferLength <= 0 || numChannels < 2 || mSineLookUpTable.empty()){
+	if(mDelayBufferLength <= 0 || numChannels < 2 || sineTable.empty()){
 		return;
 	}
 
@@ -265,7 +264,8 @@ void YOK3508Processor::processThreeChannelsChorus(
         0.0f, 
         chorusBranch1, 
         startSample, 
-        numSamples);
+        numSamples,
+        sineTable);
 
     //相位偏移为90度（2*pi/4），右通道偏移左通道90°（two_pi/4）
     processCertainChorus(buffer, 
@@ -273,7 +273,8 @@ void YOK3508Processor::processThreeChannelsChorus(
         two_pi / 4.0f, 
         chorusBranch2,
         startSample, 
-        numSamples);
+        numSamples,
+        sineTable);
 
     //相位偏移为-90度（-2*pi/4），右通道偏移左通道-90°（two_pi/4）
     processCertainChorus(buffer, 
@@ -281,7 +282,8 @@ void YOK3508Processor::processThreeChannelsChorus(
         two_pi / 4.0f * 3.0f, 
         chorusBranch3,
         startSample, 
-        numSamples);
+        numSamples,
+        sineTable);
 
     //进行加权
     //0.707是-3dB，也就是半功率点
@@ -302,8 +304,8 @@ void YOK3508Processor::processThreeChannelsChorus(
         auto* wetData = finalWetBuffer.getWritePointer(channel);
 
         //currentMix * bufferSize / 4原理：index / bufferSize == mix * 0.5pi / 2pi
-        juce::FloatVectorOperations::multiply(channelData, mDryTable[currentMix * bufferSize / 4], numSamples);
-        juce::FloatVectorOperations::multiply(wetData, mWetTable[currentMix * bufferSize / 4], numSamples);
+        juce::FloatVectorOperations::multiply(channelData, cosTable[currentMix * bufferSize / 4], numSamples);
+        juce::FloatVectorOperations::multiply(wetData, sineTable[currentMix * bufferSize / 4], numSamples);
         juce::FloatVectorOperations::add(channelData, wetData, numSamples);
     }
 
@@ -315,7 +317,8 @@ void YOK3508Processor::processCertainChorus(
     float rightRadToLeftRad, //右声道相对于左声道的正弦波相位偏移弧度数（用来实现合唱的流动感）（信号轴）
     ChorusState &chorusState,
 	int startSample,
-	int numSamples)
+	int numSamples,
+    const std::vector<float>& sineTable)
 {
     float* wetBufferDataLeft = chorusState.wetBuffer.getWritePointer(0);
     float* wetBufferDataRight = chorusState.wetBuffer.getWritePointer(1);
@@ -338,18 +341,18 @@ void YOK3508Processor::processCertainChorus(
         currentMix = mSmoothedMix.getNextValue();
         currentPhaseOffsetMs = mSmoothedPhaseOffsetMs.getNextValue();
 
-        float sineValueLeft = getLinearInterpolator(mSineLookUpTable.data(), 
-            static_cast<int>(mSineLookUpTable.size()), 
+        float sineValueLeft = getLinearInterpolator(sineTable.data(), 
+            static_cast<int>(sineTable.size()), 
             chorusState.mSineTableIndex);
 
 
         float sineIndexRight = 
             getCircularBufferIndex(
                 chorusState.mSineTableIndex + 
-                    transformRadIntoIndexStep(rightRadToLeftRad, mSineLookUpTable.size()), 
-                mSineLookUpTable.size());
-        float sineValueRight = getLinearInterpolator(mSineLookUpTable.data(), 
-            static_cast<int>(mSineLookUpTable.size()), 
+                    transformRadIntoIndexStep(rightRadToLeftRad, sineTable.size()), 
+                sineTable.size());
+        float sineValueRight = getLinearInterpolator(sineTable.data(), 
+            static_cast<int>(sineTable.size()), 
             sineIndexRight);
 
 		float leftDelayMs = currentBaseDelayMs + currentDepthMs * sineValueLeft + phaseOffsetMs / 2;
@@ -397,11 +400,11 @@ void YOK3508Processor::processCertainChorus(
 
 		chorusState.mSineTableIndex +=
 			(currentRateHz / static_cast<float>(mCurrentSampleRate)) *
-			static_cast<float>(mSineLookUpTable.size());
+			static_cast<float>(sineTable.size());
 
         //getCircularBufferIndex用来防止索引越界
         chorusState.mSineTableIndex = getCircularBufferIndex(
-            chorusState.mSineTableIndex, static_cast<float>(mSineLookUpTable.size()));
+            chorusState.mSineTableIndex, static_cast<float>(sineTable.size()));
 
 		chorusState.mWritePosition++;
         chorusState.mWritePosition = getCircularBufferIndex(chorusState.mWritePosition, mDelayBufferLength);

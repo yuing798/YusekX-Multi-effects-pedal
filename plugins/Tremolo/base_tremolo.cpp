@@ -216,9 +216,6 @@ void BaseTremoloProcessor::prepareToPlay(double sampleRate)
     mSmoothedDepthGain.reset(sampleRate, 0.002);
     mSmoothedPeakPosition.reset(sampleRate, 0.01);
 
-    if (mSineGainTable.empty())
-        SineLookUpTable(mSineGainTable, bufferSize);
-
     syncParametersFromAPVTS();
     updateProcessorParameters();
 }
@@ -235,7 +232,8 @@ void BaseTremoloProcessor::processTremolo(
     juce::AudioBuffer<float>& buffer,
     int startSample,
     int numSamples,
-    int numChannels)
+    int numChannels,
+    const std::vector<float>& sineTable)
 {
     updateProcessorParameters();
     syncParametersFromAPVTS();
@@ -247,7 +245,7 @@ void BaseTremoloProcessor::processTremolo(
     switch (mWaveformID)
     {
         case Sine:
-            processSineTremolo(buffer, startSample, numSamples, numChannels);
+            processSineTremolo(buffer, startSample, numSamples, numChannels, sineTable);
             return;
 
         case Square:
@@ -268,10 +266,9 @@ void BaseTremoloProcessor::processSineTremolo(
     juce::AudioBuffer<float>& buffer,
     int startSample,
     int numSamples,
-    int numChannels)
+    int numChannels,
+    const std::vector<float>& sineTable)
 {
-    if (mSineGainTable.empty())
-        return;
 
     for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)
     {
@@ -281,10 +278,10 @@ void BaseTremoloProcessor::processSineTremolo(
 
         const auto sineIndex = juce::jlimit(
             0,
-            static_cast<int>(mSineGainTable.size()) - 1,
+            static_cast<int>(sineTable.size()) - 1,
             static_cast<int>(mSineTableIndex));
 
-        const auto lfoValue = mSineGainTable[static_cast<size_t>(sineIndex)];
+        const auto lfoValue = sineTable[static_cast<size_t>(sineIndex)];
         const auto gain = 1.0f - (currentDepth * ((lfoValue + 1.0f) * 0.5f));
 
         for (int channel = 0; channel < numChannels; ++channel)
@@ -296,10 +293,10 @@ void BaseTremoloProcessor::processSineTremolo(
         }
 
         mSineTableIndex += (currentFrequency / static_cast<float>(mCurrentSampleRate))
-            * static_cast<float>(mSineGainTable.size());
+            * static_cast<float>(sineTable.size());
 
-        if (mSineTableIndex >= static_cast<float>(mSineGainTable.size()))
-            mSineTableIndex -= static_cast<float>(mSineGainTable.size());
+        if (mSineTableIndex >= static_cast<float>(sineTable.size()))
+            mSineTableIndex -= static_cast<float>(sineTable.size());
     }
 }
 

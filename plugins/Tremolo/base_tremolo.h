@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include <vector>
 #include "Utils/constants.h"
 #include "Utils/table.h"
 
@@ -81,17 +82,18 @@ private:
     juce::SmoothedValue<float,ValueSmoothingTypes::Linear> 
         mSmoothedPeakPosition{0.5f};//三角波峰值位置，范围0.0~1.0，默认0.5
     
-    std::vector<float> mSineGainTable;//正弦波增益查找表
     float mSineTableIndex{ 0.0f };//正弦波查找表索引
     float mLfoPhase{ 0.0f };//LFO相位
 
 public:
-    void processSineTremolo(juce::AudioBuffer<float>& buffer, int startSample, int numSamples, int numChannels);
+    void processSineTremolo(juce::AudioBuffer<float>& buffer, int startSample, int numSamples, int numChannels,
+        const std::vector<float>& sineTable);
     void processSquareTremolo(juce::AudioBuffer<float>& buffer, int startSample, int numSamples, int numChannels);
     void processTriangleTremolo(juce::AudioBuffer<float>& buffer, int startSample, int numSamples, int numChannels);
 
     void prepareToPlay(double sampleRate);
-    void processTremolo(juce::AudioBuffer<float>& buffer, int startSample, int numSamples, int numChannels);
+    void processTremolo(juce::AudioBuffer<float>& buffer, int startSample, int numSamples, int numChannels,
+        const std::vector<float>& sineTable);
 
     explicit BaseTremoloProcessor(juce::AudioProcessorValueTreeState& apvts);
     ~BaseTremoloProcessor() = default;

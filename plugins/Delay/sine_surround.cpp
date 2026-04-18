@@ -148,7 +148,6 @@ void SineSurroundProcessor::prepareToPlay(
 
 	mWritePosition = 0;
 	mSineTableIndex = 0.0f;
-	SineLookUpTable(mSineLookUpTable,bufferSize);
 
 	mSmoothedSineDepthMs.reset(sampleRate, 0.02);
 	mSmoothedPhaseFrequencyHz.reset(sampleRate, 0.02);
@@ -164,7 +163,8 @@ void SineSurroundProcessor::processSineSurround(
 	juce::AudioBuffer<float>& buffer,
 	int startSample,
 	int numSamples,
-	int numChannels)
+	int numChannels,
+	const std::vector<float>& sineTable)
 {
     syncParametersFromAPVTS();
     mUpdateProcessorParameters();
@@ -174,7 +174,7 @@ void SineSurroundProcessor::processSineSurround(
 	}
 
 
-	processBlock(buffer, startSample, numSamples, numChannels);
+	processBlock(buffer, startSample, numSamples, numChannels, sineTable);
 }
 
 void SineSurroundProcessor::mUpdateProcessorParameters()
@@ -189,9 +189,10 @@ void SineSurroundProcessor::processBlock(
 	juce::AudioBuffer<float>& buffer,
 	int startSample,
 	int numSamples,
-	int numChannels)
+	int numChannels,
+	const std::vector<float>& sineTable)
 {
-	if(mDelayBufferLength <= 0 || numChannels < 2 || mSineLookUpTable.empty()){
+	if(mDelayBufferLength <= 0 || numChannels < 2 || sineTable.empty()){
 		return;
 	}
 
@@ -208,7 +209,7 @@ void SineSurroundProcessor::processBlock(
         const float currentWetLevel = mSmoothedWetLevel.getNextValue();
 
 		const int sineIndex = static_cast<int>(mSineTableIndex);
-		const float sineValue = mSineLookUpTable[sineIndex];
+		const float sineValue = sineTable[static_cast<size_t>(sineIndex)];
 
 		float leftDelayMs = SineMsOffset - currentDepthMs * sineValue;
 		float rightDelayMs = SineMsOffset + currentDepthMs * sineValue;
@@ -245,10 +246,10 @@ void SineSurroundProcessor::processBlock(
 
 		mSineTableIndex +=
 			(currentPhaseFrequencyHz / static_cast<float>(mCurrentSampleRate)) *
-			static_cast<float>(mSineLookUpTable.size());
+			static_cast<float>(sineTable.size());
 
         mSineTableIndex = getCircularBufferIndex(
-            mSineTableIndex, static_cast<float>(mSineLookUpTable.size()));
+            mSineTableIndex, static_cast<float>(sineTable.size()));
 
 		mWritePosition++;
         mWritePosition = getCircularBufferIndex(mWritePosition, mDelayBufferLength);

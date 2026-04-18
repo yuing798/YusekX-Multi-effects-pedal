@@ -66,8 +66,6 @@ private:
     float currentPhaseOffsetMs{0.0f};//因为phaseOffset不在每个采样点都变化，
     // 所以不需要在processCertainChorus函数里使用，但是要在samples循环中更新
 
-    
-    std::vector<float> mSineLookUpTable;
     double mCurrentSampleRate { defaultSampleRate };
     int mDelayBufferLength { 0 };
     
@@ -83,8 +81,6 @@ private:
     ChorusState chorusBranch2;
     ChorusState chorusBranch3;
 
-    std::vector<float> mWetTable;
-    std::vector<float> mDryTable;
 
     juce::AudioBuffer<float> finalWetBuffer;//最终的纯湿数据
 
@@ -111,7 +107,9 @@ private:
         float rightRadToLeftRad, //右声道相对于左声道的正弦波相位偏移弧度数（用来实现合唱的流动感）（信号轴）
         ChorusState &chorusState,
 		int startSample,
-		int numSamples);	
+		int numSamples,
+        const std::vector<float>& sineTable
+    );	
 
 
 	void mUpdateProcessorParameters();
@@ -129,7 +127,9 @@ public:
         juce::AudioBuffer<float>& buffer,
         int startSample,
         int numSamples,
-        int numChannels);
+        int numChannels,
+        const std::vector<float>& sineTable,
+        const std::vector<float>& cosTable);
 
     void prepareToPlay(double sampleRate, int maximumBlockSize, int numChannels);
 };

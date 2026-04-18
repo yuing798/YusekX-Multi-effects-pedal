@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "Utils/mathFunc.h"
+#include "constants.h"
 #include "juce_audio_processors_headless/juce_audio_processors_headless.h"
 #include "plugins/Delay/base_delay.h"
 #include "plugins/Delay/sine_surround.h"
@@ -27,8 +28,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
             mBaseOverdriveProcessor(apvts)
                         
 {
-    mMidiInfo.sineTable.clear();
-    SineLookUpTable(mMidiInfo.sineTable, bufferSize);
+    table.initSineTable(table.sineTable, bufferSize);
+    table.initCosTable(table.cosTable, bufferSize);
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -143,7 +144,8 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         auto testMidiPlus = mMidiInfo.testMidiInfo(
             midiMessages, 
             numSamples, 
-            mCurrentSampleRate);
+            mCurrentSampleRate,
+            table.sineTable);
         for(int channel = 0; channel < totalNumOutputChannels; ++channel)
         {
             auto* channelData = buffer.getWritePointer(channel);
@@ -176,14 +178,18 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
        buffer,
        0,
        numSamples,
-       totalNumOutputChannels);//35.276微秒
+       totalNumOutputChannels,
+       table.sineTable
+    );//35.276微秒
 
 
     mSineSurroundProcessor.processSineSurround(
         buffer,
         0,
         numSamples,
-        totalNumOutputChannels);//41.783微秒
+        totalNumOutputChannels,
+        table.sineTable
+    );//41.783微秒
 
 
 
@@ -191,7 +197,9 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         buffer,
         0,
         numSamples,
-        totalNumOutputChannels);//179.225微秒
+        totalNumOutputChannels,
+        table.sineTable,
+        table.cosTable);//179.225微秒
 
     mBaseOverdriveProcessor.processBlock(
         buffer,
@@ -212,7 +220,8 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 std::vector<float> AudioPluginAudioProcessor::mMidiInfo::testMidiInfo(
     juce::MidiBuffer& midiMessages, 
     int numSamples, 
-    double sampleRate)
+    double sampleRate,
+    std::vector<float> sineTable)
 {
     for (const auto& midiMessage : midiMessages)
     {

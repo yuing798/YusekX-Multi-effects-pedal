@@ -5,6 +5,7 @@
 
 void SineLookUpTable(std::vector<float>& sineTable, int tableSize){
    
+    sineTable.clear();
     sineTable.resize(tableSize);
 
     for(int index = 0; index < tableSize; index++){
@@ -22,6 +23,8 @@ float tanhLookUp(float x){
 }
 
 void CosLookUpTable(std::vector<float>& cosTable, int tableSize){
+    
+    cosTable.clear();
    
     cosTable.resize(tableSize);
 

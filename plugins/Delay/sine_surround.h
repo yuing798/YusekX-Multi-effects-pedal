@@ -52,7 +52,6 @@ private:
     float mWetLevel { 0.5f };
 
     juce::AudioBuffer<float> mDelayBuffer;
-    std::vector<float> mSineLookUpTable;
     double mCurrentSampleRate { defaultSampleRate };
     int mDelayBufferLength { 0 };
     int mWritePosition { 0 };
@@ -77,7 +76,8 @@ private:
         juce::AudioBuffer<float>& buffer,
         int startSample,
         int numSamples,
-        int numChannels);
+        int numChannels,
+        const std::vector<float>& sineTable);
 
 	void mUpdateProcessorParameters();
 
@@ -90,7 +90,8 @@ public:
 		juce::AudioBuffer<float>& buffer,
 		int startSample,
 		int numSamples,
-		int numChannels);	
+		int numChannels,
+        const std::vector<float>& sineTable);	
 
     void prepareToPlay(double sampleRate, int maximumBlockSize, int numChannels);
 };

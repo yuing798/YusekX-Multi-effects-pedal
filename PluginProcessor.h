@@ -74,14 +74,28 @@ private:
         float velocity{ 0.0f };// MIDI 音符的力度
         float phaseStep{ 0.0f };// 用于振荡器的相位步长
         float currentIndex{ 0.0f };
-        std::vector<float> sineTable;
         juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> midiGain;
         
 
         std::vector<float> testMidiInfo(juce::MidiBuffer& midiMessages, 
             int numSamples, 
-            double sampleRate);
+            double sampleRate,
+            std::vector<float> sineTable
+        );
     } mMidiInfo;
+
+    struct table{
+        std::vector<float> sineTable;
+        std::vector<float> cosTable;
+
+        void initSineTable(std::vector<float>& sineTable, int tableSize) {
+            SineLookUpTable(sineTable, tableSize);
+        }
+        void initCosTable(std::vector<float>& cosTable, int tableSize) {
+            CosLookUpTable(cosTable, tableSize);
+        }
+
+    }table;//把查询表都放在主函数初始化
 
     BaseDelayProcessor mBaseDelayProcessor;
     BaseTremoloProcessor mBaseTremoloProcessor;
