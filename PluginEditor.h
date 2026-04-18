@@ -1,6 +1,7 @@
 #pragma once
 //该文件定义插件的用户界面类，包含了插件的外观和交互功能实现
 #include "PluginProcessor.h"
+#include "plugins/Booster/base_overdrive.h"
 #include "plugins/Delay/base_delay.h"
 #include "plugins/MOD/multiChannelsChorus.h"
 #include "plugins/Tremolo/base_tremolo.h"
@@ -33,6 +34,7 @@ private:
     BaseTremoloEditor mBaseTremoloEditor;
     SineSurroundEditor mSineSurroundEditor;
     YOK3508Editor mYOK3508Editor;
+    baseOverdriveEditor mBaseOverdriveEditor;
     
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessorEditor)

@@ -5,7 +5,7 @@
 #include "plugins/Delay/base_delay.h"
 #include "plugins/Delay/sine_surround.h"
 #include <vector>
-
+#include <chrono>
 //==============================================================================
 AudioPluginAudioProcessor::AudioPluginAudioProcessor()
      : AudioProcessor (BusesProperties()
@@ -23,7 +23,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
             mBaseDelayProcessor(apvts),
             mBaseTremoloProcessor(apvts),
             mSineSurroundProcessor(apvts),
-            mYOK3508Processor(apvts)
+            mYOK3508Processor(apvts),
+            mBaseOverdriveProcessor(apvts)
                         
 {
     mMidiInfo.sineTable.clear();
@@ -60,6 +61,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     BaseTremoloProcessor::createParameterLayout(parameters);
     SineSurroundProcessor::createParameterLayout(parameters);
     YOK3508Processor::createParameterLayout(parameters);
+    baseOverdriveProcessor::createParameterLayout(parameters);
 
     return { parameters.begin(), parameters.end() };
 }
@@ -80,6 +82,8 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     mBaseTremoloProcessor.prepareToPlay(sampleRate);
     mSineSurroundProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
     mYOK3508Processor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+    mBaseOverdriveProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -150,26 +154,46 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             }
         }
     }
-
+    // auto startTime = std::chrono::high_resolution_clock::now(); //记录处理开始时间
+    
     mBaseDelayProcessor.processDelay(
         buffer, 
         0, 
         numSamples, 
-        totalNumOutputChannels);
+        totalNumOutputChannels);//35.735微秒
 
+    // auto endTime = std::chrono::high_resolution_clock::now(); //记录处理结束时间
+    // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count(); //计算处理时间
+    // processTime += duration;
+    // processCount++;
+    // if(processCount >= 1000)
+    // {
+    //     std::cout << "Average processing time for YOK3508Processor: " << (processTime / processCount) << " us" << std::endl;
+    //     processTime = 0.0f;
+    //     processCount = 0;
+    // }
     mBaseTremoloProcessor.processTremolo(
        buffer,
        0,
        numSamples,
-       totalNumOutputChannels);
+       totalNumOutputChannels);//35.276微秒
+
 
     mSineSurroundProcessor.processSineSurround(
         buffer,
         0,
         numSamples,
-        totalNumOutputChannels);
+        totalNumOutputChannels);//41.783微秒
+
+
 
     mYOK3508Processor.processThreeChannelsChorus(
+        buffer,
+        0,
+        numSamples,
+        totalNumOutputChannels);//179.225微秒
+
+    mBaseOverdriveProcessor.processBlock(
         buffer,
         0,
         numSamples,

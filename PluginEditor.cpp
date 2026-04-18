@@ -9,7 +9,8 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (
     mBaseDelayEditor(p.getAPVTS()),
     mBaseTremoloEditor(p.getAPVTS()),
     mSineSurroundEditor(p.getAPVTS()),
-    mYOK3508Editor(p.getAPVTS())
+    mYOK3508Editor(p.getAPVTS()),
+    mBaseOverdriveEditor(p.getAPVTS())
 {
     outputGainSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     outputGainSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, 20);
@@ -32,7 +33,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (
     addAndMakeVisible(mBaseTremoloEditor);
     addAndMakeVisible(mSineSurroundEditor);
     addAndMakeVisible(mYOK3508Editor);
-
+    addAndMakeVisible(mBaseOverdriveEditor);
     setSize (1200, 700);
     
 }
@@ -62,4 +63,6 @@ void AudioPluginAudioProcessorEditor::resized()
     mBaseTremoloEditor.setBounds(400, 70, 380, 200);
     mSineSurroundEditor.setBounds(790, 70, 380, 200);
     mYOK3508Editor.setBounds(10, 280, 380, 300);
+    mBaseOverdriveEditor.setBounds(400, 280, 380, 300);
+
 }

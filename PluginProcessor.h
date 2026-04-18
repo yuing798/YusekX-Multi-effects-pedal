@@ -6,6 +6,7 @@
 #include "Utils/constants.h"
 #include "Utils/mathFunc.h"
 #include "Utils/table.h"
+#include "plugins/Booster/base_overdrive.h"
 #include "plugins/Delay/base_delay.h"
 #include "plugins/Delay/sine_surround.h"
 #include "plugins/MOD/multiChannelsChorus.h"
@@ -86,6 +87,10 @@ private:
     BaseTremoloProcessor mBaseTremoloProcessor;
     SineSurroundProcessor mSineSurroundProcessor;
     YOK3508Processor mYOK3508Processor;
+    baseOverdriveProcessor  mBaseOverdriveProcessor;
+
+    float processTime{ 0.0f };
+    int processCount{ 0 };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };

@@ -42,6 +42,9 @@ static constexpr const char* ThreeChannelsChorusFeedbackId = "3ChannelsChorusFee
 static constexpr const char* ThreeChannelsChorusBaseDelayId = "3ChannelsChorusBaseDelay";
 static constexpr const char* ThreeChannelsChorusPhaseOffsetId = "3ChannelsChorusPhaseOffset";
 
+//base overdrive效果器ID
+static constexpr const char* BaseOverdriveOpenId = "baseOverdriveOpen";
+
 
 //attachment别名
 using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
