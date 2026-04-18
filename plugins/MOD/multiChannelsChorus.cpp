@@ -259,34 +259,28 @@ void YOK3508Processor::processThreeChannelsChorus(
 	}
 
     //处理第一组声道（0和1），相位偏移为0
-    // processCertainChorus(buffer, 
-    //     chorusBranch1.wetBuffer.getWritePointer(0), 
-    //     chorusBranch1.wetBuffer.getWritePointer(1),
-    //     0.0f,
-    //     0.0f, 
-    //     chorusBranch1, 
-    //     startSample, 
-    //     numSamples);
-
-    //相位偏移为90度（2*pi/4），右通道偏移左通道5°（two_pi/72）
     processCertainChorus(buffer, 
-        chorusBranch2.wetBuffer.getWritePointer(0), 
-        chorusBranch2.wetBuffer.getWritePointer(1), 
+        0.0f,
+        0.0f, 
+        chorusBranch1, 
+        startSample, 
+        numSamples);
+
+    //相位偏移为90度（2*pi/4），右通道偏移左通道90°（two_pi/4）
+    processCertainChorus(buffer, 
         currentPhaseOffsetMs,
-        two_pi / 72.0f, 
+        two_pi / 4.0f, 
         chorusBranch2,
         startSample, 
         numSamples);
 
-    //相位偏移为-90度（-2*pi/4），右通道偏移左通道10°（two_pi/36）
-    // processCertainChorus(buffer, 
-    //     chorusBranch3.wetBuffer.getWritePointer(0), 
-    //     chorusBranch3.wetBuffer.getWritePointer(1),
-    //     -currentPhaseOffsetMs,
-    //     two_pi / 36.0f, 
-    //     chorusBranch3,
-    //     startSample, 
-    //     numSamples);
+    //相位偏移为-90度（-2*pi/4），右通道偏移左通道-90°（two_pi/4）
+    processCertainChorus(buffer, 
+        -currentPhaseOffsetMs,
+        two_pi / 4.0f * 3.0f, 
+        chorusBranch3,
+        startSample, 
+        numSamples);
 
     //进行加权
     //0.707是-3dB，也就是半功率点
@@ -298,7 +292,7 @@ void YOK3508Processor::processThreeChannelsChorus(
         juce::FloatVectorOperations::addWithMultiply(finalWetBuffer.getWritePointer(channel),
             chorusBranch1.wetBuffer.getReadPointer(channel), 0.447f, numSamples);
         juce::FloatVectorOperations::addWithMultiply(finalWetBuffer.getWritePointer(channel),
-            chorusBranch2.wetBuffer.getReadPointer(channel), 1.0f, numSamples);
+            chorusBranch2.wetBuffer.getReadPointer(channel), 0.632f, numSamples);
         juce::FloatVectorOperations::addWithMultiply(finalWetBuffer.getWritePointer(channel),
             chorusBranch3.wetBuffer.getReadPointer(channel), 0.632f, numSamples);
 
@@ -316,14 +310,14 @@ void YOK3508Processor::processThreeChannelsChorus(
 
 void YOK3508Processor::processCertainChorus(
 	juce::AudioBuffer<float>& buffer,
-	float* wetBufferDataLeft,//单支路左通道湿数据
-    float* wetBufferDataRight,//单支路右通道湿数据
     float phaseOffsetMs,//单支路左右通道偏移毫秒数(用来确定这条支路的具体声音方位)（时间轴）
     float rightRadToLeftRad, //右声道相对于左声道的正弦波相位偏移弧度数（用来实现合唱的流动感）（信号轴）
     ChorusState &chorusState,
 	int startSample,
 	int numSamples)
 {
+    float* wetBufferDataLeft = chorusState.wetBuffer.getWritePointer(0);
+    float* wetBufferDataRight = chorusState.wetBuffer.getWritePointer(1);
     //拷贝原始输入到wetBuffer中，后续对wetBuffer进行处理，最后再混回原始输入
     auto* ChannelLeftData = buffer.getReadPointer(0, startSample);
     auto* ChannelRightData = buffer.getReadPointer(1, startSample);
