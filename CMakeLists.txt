@@ -20,7 +20,7 @@ else()
 endif()
 
 
-juce_add_plugin(Multi_effects_processor
+juce_add_plugin(Multi_effects_processor                        #Multi_effects_processor
     # VERSION ...                               # Set this if the plugin version is different to the project version
     # ICON_BIG ...                              # ICON_* arguments specify a path to an image file to use as an icon for the Standalone
     # ICON_SMALL ...
@@ -34,7 +34,7 @@ juce_add_plugin(Multi_effects_processor
     PLUGIN_MANUFACTURER_CODE Yuse               
     PLUGIN_CODE K0yi                            
                                                 
-    FORMATS Standalone #VST3 AU #如果想要生成AU插件，取消注释AU，并确保在MacOS上构建
+    FORMATS Standalone#Standalone #VST3 AU #如果想要生成AU插件，取消注释AU，并确保在MacOS上构建
                                #如果想要生成VST3插件，取消注释VST3 
     PRODUCT_NAME "Multi_effects_processor")       
 

@@ -205,7 +205,9 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         buffer,
         0,
         numSamples,
-        totalNumOutputChannels);
+        totalNumOutputChannels,
+        table.sineTable,
+        table.cosTable);
 
     for (int channel = 0; channel < totalNumOutputChannels; ++channel)
     {

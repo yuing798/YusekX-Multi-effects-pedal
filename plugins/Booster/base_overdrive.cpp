@@ -87,6 +87,8 @@ void baseOverdriveProcessor::syncParametersFromAPVTS()
         mDrive = driveParameter->load();
     if (auto* outputLevelParameter = mAPVTS.getRawParameterValue(BaseOverdriveOutputLevelId))
         mOutputLevel = outputLevelParameter->load();
+    if (auto* mixParameter = mAPVTS.getRawParameterValue(BaseOverdriveMixId))
+        mMix = mixParameter->load();
 }
 
 void baseOverdriveEditor::resized()
@@ -121,13 +123,16 @@ void baseOverdriveProcessor::mUpdateProcessorParameters()
 {
 	mSmoothedDrive.setTargetValue(mDrive);
     mSmoothedOutputLevel.setTargetValue(mOutputLevel);
+    mSmoothedMix.setTargetValue(mMix);
 }
 
 void baseOverdriveProcessor::processBlock(
 	juce::AudioBuffer<float>& buffer,
 	int startSample,
 	int numSamples,
-	int numChannels)
+	int numChannels,
+    const std::vector<float>& wetTable,
+    const std::vector<float>& dryTable)
 {
     syncParametersFromAPVTS();
     mUpdateProcessorParameters();
@@ -136,29 +141,44 @@ void baseOverdriveProcessor::processBlock(
 		return;
 	}
 
-    processBaseOverdrive(buffer, startSample, numSamples, numChannels);
+    processBaseOverdrive(buffer, startSample, numSamples, numChannels, wetTable, dryTable);
 }
 
 void baseOverdriveProcessor::processBaseOverdrive(
 	juce::AudioBuffer<float>& buffer,
 	int startSample,
 	int numSamples,
-    int numChannels)
+    int numChannels,
+    const std::vector<float>& wetTable,
+    const std::vector<float>& dryTable)
 {
-
     for(int channel = 0; channel < numChannels; ++channel){
-
+        auto* channelData = buffer.getWritePointer(channel, startSample);
+        
+        // 为临时缓冲区分配内存
+        std::vector<float> wetBuffer(numSamples);
+        
         for(int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex){
             const float currentDrive = mSmoothedDrive.getNextValue();
             const float currentOutputLevel = mSmoothedOutputLevel.getNextValue();
-            auto* sampleData = buffer.getWritePointer(channel, startSample + sampleIndex);
-            //简单的过载算法：将输入信号放大，然后进行软剪辑
-            float inputSample = *sampleData;
-            float boostedSample = inputSample * currentDrive; //放大倍数
-            //软剪辑算法
-            boostedSample = tanhLookUp(boostedSample) * currentOutputLevel; //使用双曲正切函数进行软剪辑
+            const float currentMix = mSmoothedMix.getNextValue();
             
-            *sampleData = boostedSample;
+            // 获取原始输入样本
+            const float inputSample = channelData[sampleIndex];
+            
+            // 简单的过载算法：将输入信号放大，然后进行软剪辑
+            float boostedSample = inputSample * currentDrive; // 放大倍数
+            // 软剪辑算法
+            boostedSample = tanhLookUp(boostedSample) * currentOutputLevel;
+            
+            // 存储处理后的湿信号
+            wetBuffer[sampleIndex] = boostedSample;
+            
+            // 干湿混合
+            const float dryGain = dryTable[static_cast<size_t>(currentMix * bufferSize / 4)];
+            const float wetGain = wetTable[static_cast<size_t>(currentMix * bufferSize / 4)];
+            
+            channelData[sampleIndex] = inputSample * dryGain + wetBuffer[sampleIndex] * wetGain;
         }
     }
 }

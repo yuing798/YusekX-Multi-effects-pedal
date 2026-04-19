@@ -52,6 +52,8 @@ private:
         mSmoothedDrive { 4.0f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedOutputLevel { 0.2f };
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
+        mSmoothedMix { 0.5f };
 
     juce::AudioProcessorValueTreeState& mAPVTS;
 
@@ -59,7 +61,9 @@ private:
         juce::AudioBuffer<float>& buffer,
         int startSample,
         int numSamples,
-        int numChannels);	
+        int numChannels,
+        const std::vector<float>& wetTable,
+        const std::vector<float>& dryTable);	
 
 	void mUpdateProcessorParameters();
 
@@ -74,7 +78,9 @@ public:
         juce::AudioBuffer<float>& buffer,
         int startSample,
         int numSamples,
-        int numChannels);
+        int numChannels,
+        const std::vector<float>& wetTable,
+        const std::vector<float>& dryTable);
 
     void prepareToPlay(double sampleRate, int maximumBlockSize, int numChannels);
 };
