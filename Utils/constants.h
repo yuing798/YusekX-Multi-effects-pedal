@@ -47,6 +47,8 @@ static constexpr const char* BaseOverdriveOpenId = "baseOverdriveOpen";
 static constexpr const char* BaseOverdriveDriveId = "baseOverdriveDrive";
 static constexpr const char* BaseOverdriveOutputLevelId = "baseOverdriveOutputLevel";
 static constexpr const char* BaseOverdriveMixId = "baseOverdriveMix";
+static constexpr const char* BaseOverdriveToneId = "baseOverdriveTone";
+
 
 //attachment别名
 using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;

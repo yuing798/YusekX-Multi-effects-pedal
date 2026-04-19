@@ -232,6 +232,13 @@ void YOK3508Processor::mUpdateProcessorParameters()
 	mSmoothedFeedback.setTargetValue(mFeedback);
 	mSmoothedBaseDelayMs.setTargetValue(mBaseDelayMs);
 	mSmoothedPhaseOffsetMs.setTargetValue(mPhaseOffsetMs);
+
+    mSmoothedDepthMs.reset(mCurrentSampleRate, 0.02);
+    mSmoothedRateHz.reset(mCurrentSampleRate, 0.02);
+    mSmoothedMix.reset(mCurrentSampleRate, 0.02);
+    mSmoothedFeedback.reset(mCurrentSampleRate, 0.02);
+    mSmoothedBaseDelayMs.reset(mCurrentSampleRate, 0.02);
+    mSmoothedPhaseOffsetMs.reset(mCurrentSampleRate, 0.02);
 }
 
 void YOK3508Processor::processThreeChannelsChorus(

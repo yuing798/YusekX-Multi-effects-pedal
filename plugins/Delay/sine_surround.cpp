@@ -183,6 +183,11 @@ void SineSurroundProcessor::mUpdateProcessorParameters()
 	mSmoothedPhaseFrequencyHz.setTargetValue(mPhaseFrequencyHz);
 	mSmoothedDryLevel.setTargetValue(mDryLevel);
 	mSmoothedWetLevel.setTargetValue(mWetLevel);
+
+    mSmoothedSineDepthMs.reset(mCurrentSampleRate, 0.02);
+    mSmoothedPhaseFrequencyHz.reset(mCurrentSampleRate, 0.02);
+    mSmoothedDryLevel.reset(mCurrentSampleRate, 0.02);
+    mSmoothedWetLevel.reset(mCurrentSampleRate, 0.02);
 }
 
 void SineSurroundProcessor::processBlock(

@@ -36,6 +36,10 @@ baseOverdriveEditor::baseOverdriveEditor(juce::AudioProcessorValueTreeState& apv
     mMixLabel.setText("Mix", juce::dontSendNotification);
     addAndMakeVisible(mMixSlider);
 
+    addAndMakeVisible(mToneLabel);
+    mToneLabel.setText("Tone", juce::dontSendNotification);
+    addAndMakeVisible(mToneSlider);
+
     bindParameters();
 }
 
@@ -52,6 +56,9 @@ void baseOverdriveEditor::bindParameters()
 
     mMixAttachment = std::make_unique<SliderAttachment>(
         mAPVTS, BaseOverdriveMixId, mMixSlider);
+
+    mToneAttachment = std::make_unique<SliderAttachment>(
+        mAPVTS, BaseOverdriveToneId, mToneSlider);
 }
 
 void baseOverdriveProcessor::createParameterLayout(std::vector<std::unique_ptr<juce::RangedAudioParameter>> &parameters){
@@ -77,6 +84,12 @@ void baseOverdriveProcessor::createParameterLayout(std::vector<std::unique_ptr<j
         "base Overdrive Mix",
         juce::NormalisableRange<float>(0.0f, 1.0f),
         0.5f));
+
+    parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
+        BaseOverdriveToneId,
+        "base Overdrive Tone",
+        juce::NormalisableRange<float>(0.0f, 1.0f),
+        0.5f));
 }
 
 void baseOverdriveProcessor::syncParametersFromAPVTS()
@@ -89,6 +102,8 @@ void baseOverdriveProcessor::syncParametersFromAPVTS()
         mOutputLevel = outputLevelParameter->load();
     if (auto* mixParameter = mAPVTS.getRawParameterValue(BaseOverdriveMixId))
         mMix = mixParameter->load();
+    if (auto* toneParameter = mAPVTS.getRawParameterValue(BaseOverdriveToneId))
+        mTone = toneParameter->load();
 }
 
 void baseOverdriveEditor::resized()
@@ -104,6 +119,9 @@ void baseOverdriveEditor::resized()
 
     mMixLabel.setBounds(10, 170, 100, 30);
     mMixSlider.setBounds(120, 170, 150, 30);
+
+    mToneLabel.setBounds(10, 210, 100, 30);
+    mToneSlider.setBounds(120, 210, 150, 30);
 }
 
 void baseOverdriveProcessor::prepareToPlay(
@@ -124,6 +142,13 @@ void baseOverdriveProcessor::mUpdateProcessorParameters()
 	mSmoothedDrive.setTargetValue(mDrive);
     mSmoothedOutputLevel.setTargetValue(mOutputLevel);
     mSmoothedMix.setTargetValue(mMix);
+    mSmoothedTone.setTargetValue(mTone);
+
+    mSmoothedDrive.reset(mCurrentSampleRate, 0.05); // 50ms的平滑时间
+    mSmoothedOutputLevel.reset(mCurrentSampleRate, 0.05);
+    mSmoothedMix.reset(mCurrentSampleRate, 0.05);
+    mSmoothedTone.reset(mCurrentSampleRate, 0.05);
+
 }
 
 void baseOverdriveProcessor::processBlock(

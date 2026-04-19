@@ -226,6 +226,12 @@ void BaseTremoloProcessor::updateProcessorParameters(){
     mSmoothedMix.setTargetValue(mMix);
     mSmoothedDutyCycle.setTargetValue(mDutyCycle);
     mSmoothedPeakPosition.setTargetValue(mPeakPosition);
+
+    mSmoothedFrequency.reset(mCurrentSampleRate, 0.01);
+    mSmoothedDepth.reset(mCurrentSampleRate, 0.01);
+    mSmoothedMix.reset(mCurrentSampleRate, 0.01);
+    mSmoothedDutyCycle.reset(mCurrentSampleRate, 0.01);
+    mSmoothedPeakPosition.reset(mCurrentSampleRate, 0.01);
 }
 
 void BaseTremoloProcessor::processTremolo(
