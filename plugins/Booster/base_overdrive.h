@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include <memory>
+#include <vector>
 #include "Utils/constants.h"
 #include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_gui_basics/juce_gui_basics.h"
@@ -52,6 +53,8 @@ private:
     float mMix { 0.5f };
     float mTone { 0.5f };
 
+    std::vector<float> mWetBuffer;
+
     struct LowPassFilterState {
         float cutOffFrequency { 1000.0f }; // 截止频率
 
@@ -61,10 +64,10 @@ private:
         float b0 { 0.0f };
         float z1 { 0.0f }; // 前一个输入样本
 
-        void setCutOffFrequency(bool isUpdated, float newCutOffFrequency, float sampleRate) {
+        void setCutOffFrequency(bool isUpdated, float tone, float sampleRate) {
             if(isUpdated){
-                cutOffFrequency = newCutOffFrequency;//截止频率
-                float b0 = std::exp(- two_pi * cutOffFrequency / sampleRate);
+                cutOffFrequency = tone * 10000.0f;//截止频率
+                b0 = std::exp(- two_pi * cutOffFrequency / sampleRate);
                 a0 = 1.0f - b0;
             }else{
                 return;
@@ -77,7 +80,17 @@ private:
             return outputSample;
         }
 
-    }mLowPass;//一阶低通滤波器状态
+        void init(float tone, float sampleRate){
+            cutOffFrequency = tone * 10000.0f;
+            b0 = std::exp(- two_pi * cutOffFrequency / sampleRate);
+            a0 = 1.0f - b0;
+            z1 = 0.0f;
+        }
+
+    };//一阶低通滤波器状态
+
+    LowPassFilterState mLowPassLeft;
+    LowPassFilterState mLowPassRight;
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedDrive { 4.0f };

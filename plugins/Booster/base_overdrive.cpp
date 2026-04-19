@@ -135,19 +135,28 @@ void baseOverdriveProcessor::prepareToPlay(
     syncParametersFromAPVTS();
 	mUpdateProcessorParameters();
 
+    mLowPassLeft.init(mTone, mCurrentSampleRate); // 初始化低通滤波器状态
+    mLowPassRight.init(mTone, mCurrentSampleRate);
 }
 
 void baseOverdriveProcessor::mUpdateProcessorParameters()
 {
-	mSmoothedDrive.setTargetValue(mDrive);
-    mSmoothedOutputLevel.setTargetValue(mOutputLevel);
-    mSmoothedMix.setTargetValue(mMix);
-    mSmoothedTone.setTargetValue(mTone);
 
     mSmoothedDrive.reset(mCurrentSampleRate, 0.05); // 50ms的平滑时间
     mSmoothedOutputLevel.reset(mCurrentSampleRate, 0.05);
     mSmoothedMix.reset(mCurrentSampleRate, 0.05);
     mSmoothedTone.reset(mCurrentSampleRate, 0.05);
+
+	mSmoothedDrive.setTargetValue(mDrive);
+    mSmoothedOutputLevel.setTargetValue(mOutputLevel);
+    mSmoothedMix.setTargetValue(mMix);
+    mSmoothedTone.setTargetValue(mTone);
+
+
+    //reset会重置isSmoothing标志位，
+    // 所以在processBlock里调用mUpdateProcessorParameters时，
+    // isSmoothing会返回false，这样在setCutOffFrequency函数里就不会进行exp计算，节省CPU资源
+
 
 }
 
@@ -177,34 +186,34 @@ void baseOverdriveProcessor::processBaseOverdrive(
     const std::vector<float>& wetTable,
     const std::vector<float>& dryTable)
 {
-    for(int channel = 0; channel < numChannels; ++channel){
-        auto* channelData = buffer.getWritePointer(channel, startSample);
+    auto* leftChannelData = buffer.getWritePointer(0, startSample);
+    auto* rightChannelData = buffer.getWritePointer(1, startSample);
+
+    for(int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex){
+        float currentDrive = mSmoothedDrive.getNextValue();
+        float currentOutputLevel = mSmoothedOutputLevel.getNextValue();
+        float currentMix = mSmoothedMix.getNextValue();
+        float currentTone = mSmoothedTone.getNextValue();
+        mLowPassLeft.setCutOffFrequency(mSmoothedTone.isSmoothing(), currentTone, mCurrentSampleRate);
+        mLowPassRight.setCutOffFrequency(mSmoothedTone.isSmoothing(), currentTone, mCurrentSampleRate);
         
-        // 为临时缓冲区分配内存
-        std::vector<float> wetBuffer(numSamples);
-        
-        for(int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex){
-            const float currentDrive = mSmoothedDrive.getNextValue();
-            const float currentOutputLevel = mSmoothedOutputLevel.getNextValue();
-            const float currentMix = mSmoothedMix.getNextValue();
-            
-            // 获取原始输入样本
-            const float inputSample = channelData[sampleIndex];
-            
-            // 简单的过载算法：将输入信号放大，然后进行软剪辑
-            float boostedSample = inputSample * currentDrive; // 放大倍数
-            // 软剪辑算法
-            boostedSample = tanhLookUp(boostedSample) * currentOutputLevel;
-            
-            // 存储处理后的湿信号
-            wetBuffer[sampleIndex] = boostedSample;
-            
-            // 干湿混合
-            const float dryGain = dryTable[static_cast<size_t>(currentMix * bufferSize / 4)];
-            const float wetGain = wetTable[static_cast<size_t>(currentMix * bufferSize / 4)];
-            
-            channelData[sampleIndex] = inputSample * dryGain + wetBuffer[sampleIndex] * wetGain;
-        }
+        //信号放大
+        float leftInputSample = leftChannelData[sampleIndex] * currentDrive;
+        float rightInputSample = rightChannelData[sampleIndex] * currentDrive;
+
+        //过载失真
+        leftInputSample = tanhLookUp(leftInputSample) * currentOutputLevel;
+        rightInputSample = tanhLookUp(rightInputSample) * currentOutputLevel;
+
+        //一阶低通滤波器处理
+        leftInputSample = mLowPassLeft.processSample(leftInputSample);
+        rightInputSample = mLowPassRight.processSample(rightInputSample);
+
+        //干湿混合
+        leftChannelData[sampleIndex] = 
+            leftInputSample * wetTable[currentMix * bufferSize / 4] + leftChannelData[sampleIndex] * dryTable[currentMix * bufferSize / 4];
+        rightChannelData[sampleIndex] = 
+            rightInputSample * wetTable[currentMix * bufferSize / 4] + rightChannelData[sampleIndex] * dryTable[currentMix * bufferSize / 4];
     }
 }
 
