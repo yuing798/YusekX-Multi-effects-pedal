@@ -3,6 +3,7 @@
 #include "constants.h"
 #include "Utils/mathFunc.h"
 #include "juce_audio_basics/juce_audio_basics.h"
+#include "juce_core/system/juce_PlatformDefs.h"
 #include <memory>
 
 baseOverdriveProcessor::baseOverdriveProcessor(juce::AudioProcessorValueTreeState& apvts)
@@ -137,15 +138,18 @@ void baseOverdriveProcessor::prepareToPlay(
 
     mLowPassLeft.init(mTone, mCurrentSampleRate); // 初始化低通滤波器状态
     mLowPassRight.init(mTone, mCurrentSampleRate);
-}
-
-void baseOverdriveProcessor::mUpdateProcessorParameters()
-{
 
     mSmoothedDrive.reset(mCurrentSampleRate, 0.05); // 50ms的平滑时间
     mSmoothedOutputLevel.reset(mCurrentSampleRate, 0.05);
     mSmoothedMix.reset(mCurrentSampleRate, 0.05);
     mSmoothedTone.reset(mCurrentSampleRate, 0.05);
+    //平滑时间只在prepareToPlay中设置
+}
+
+void baseOverdriveProcessor::mUpdateProcessorParameters()
+{
+
+
 
 	mSmoothedDrive.setTargetValue(mDrive);
     mSmoothedOutputLevel.setTargetValue(mOutputLevel);
@@ -186,34 +190,41 @@ void baseOverdriveProcessor::processBaseOverdrive(
     const std::vector<float>& wetTable,
     const std::vector<float>& dryTable)
 {
-    auto* leftChannelData = buffer.getWritePointer(0, startSample);
-    auto* rightChannelData = buffer.getWritePointer(1, startSample);
+    auto* channelDataLeft = buffer.getWritePointer(0, startSample);
+    auto* channelDataRight = numChannels > 1 ? buffer.getWritePointer(1, startSample) : nullptr;
 
     for(int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex){
+
         float currentDrive = mSmoothedDrive.getNextValue();
         float currentOutputLevel = mSmoothedOutputLevel.getNextValue();
         float currentMix = mSmoothedMix.getNextValue();
         float currentTone = mSmoothedTone.getNextValue();
+
         mLowPassLeft.setCutOffFrequency(mSmoothedTone.isSmoothing(), currentTone, mCurrentSampleRate);
-        mLowPassRight.setCutOffFrequency(mSmoothedTone.isSmoothing(), currentTone, mCurrentSampleRate);
-        
+
+
         //信号放大
-        float leftInputSample = leftChannelData[sampleIndex] * currentDrive;
-        float rightInputSample = rightChannelData[sampleIndex] * currentDrive;
+        float inputSampleLeft = channelDataLeft[sampleIndex] * currentDrive;
 
         //过载失真
-        leftInputSample = tanhLookUp(leftInputSample) * currentOutputLevel;
-        rightInputSample = tanhLookUp(rightInputSample) * currentOutputLevel;
+        inputSampleLeft = tanhLookUp(inputSampleLeft) * currentOutputLevel;
 
         //一阶低通滤波器处理
-        leftInputSample = mLowPassLeft.processSample(leftInputSample);
-        rightInputSample = mLowPassRight.processSample(rightInputSample);
+        inputSampleLeft = mLowPassLeft.processSample(inputSampleLeft);
+
 
         //干湿混合
-        leftChannelData[sampleIndex] = 
-            leftInputSample * wetTable[currentMix * bufferSize / 4] + leftChannelData[sampleIndex] * dryTable[currentMix * bufferSize / 4];
-        rightChannelData[sampleIndex] = 
-            rightInputSample * wetTable[currentMix * bufferSize / 4] + rightChannelData[sampleIndex] * dryTable[currentMix * bufferSize / 4];
+        channelDataLeft[sampleIndex] = 
+            inputSampleLeft * wetTable[currentMix * bufferSize / 4] + channelDataLeft[sampleIndex] * dryTable[currentMix * bufferSize / 4];
+
+        if(channelDataRight != nullptr){
+            mLowPassRight.setCutOffFrequency(mSmoothedTone.isSmoothing(), currentTone, mCurrentSampleRate);
+            float inputSampleRight = channelDataRight[sampleIndex] * currentDrive;
+            inputSampleRight = tanhLookUp(inputSampleRight) * currentOutputLevel;
+            inputSampleRight = mLowPassRight.processSample(inputSampleRight);
+            channelDataRight[sampleIndex] =
+                inputSampleRight * wetTable[currentMix * bufferSize / 4] + channelDataRight[sampleIndex] * dryTable[currentMix * bufferSize / 4];
+        }
     }
 }
 
