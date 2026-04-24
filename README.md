@@ -1,5 +1,5 @@
 
-# OnLineVoiceModify 音频项目
+# 综合效果器
 这是一个基于 **JUCE 7** 框架开发的 C++ 综合效果器。本项目采用现代 CMake 构建方式，特别针对 **Windows MSVC** 环境进行了优化。
 
 **本项目目前处于个人实验阶段，暂不接受 PR，谢谢配合**
@@ -30,7 +30,7 @@ copilot_docs/:给ai写代码时的上下文，当然你也可以看
 
 images/:顾名思义，图片
 
-看见代号请翻阅Utils/Constants.h查看具体效果器功能
+效果器设计指南请查阅：[设计指南](https://github.com/yuing798/effect-pedal-develop-guide)
 
 ## 🛠 开发环境要求 (Prerequisites)
 为了确保编译成功，你的电脑需要配置以下环境：

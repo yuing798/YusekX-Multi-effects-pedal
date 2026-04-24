@@ -238,6 +238,7 @@ void BaseDelayProcessor::processBlock(
             auto* delayData = mDelayBuffer.getWritePointer(channel);
 
             const float drySample = channelData[sampleIndex];
+            //线性插值获取延迟缓冲区中对应位置的样本值
             const float delayedSample = getLinearInterpolator(
                 delayData, 
                 mDelayBufferLength, 

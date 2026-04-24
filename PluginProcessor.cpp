@@ -25,7 +25,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
             mBaseTremoloProcessor(apvts),
             mSineSurroundProcessor(apvts),
             mYOK3508Processor(apvts),
-            mBaseOverdriveProcessor(apvts)
+            mBaseOverdriveProcessor(apvts),
+            mBaseEQProcessor(apvts)
                         
 {
     table.initSineTable(table.sineTable, bufferSize);
@@ -63,6 +64,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     SineSurroundProcessor::createParameterLayout(parameters);
     YOK3508Processor::createParameterLayout(parameters);
     baseOverdriveProcessor::createParameterLayout(parameters);
+    baseEQProcessor::createParameterLayout(parameters);
+
 
     return { parameters.begin(), parameters.end() };
 }
@@ -84,7 +87,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     mSineSurroundProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
     mYOK3508Processor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
     mBaseOverdriveProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
-
+    mBaseEQProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -209,6 +212,8 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         table.sineTable,
         table.cosTable);
 
+    mBaseEQProcessor.processBlock(buffer, 0, numSamples, totalNumOutputChannels);
+
     for (int channel = 0; channel < totalNumOutputChannels; ++channel)
     {
         buffer.applyGain(channel, 0, numSamples, gainLinear);
@@ -233,7 +238,7 @@ std::vector<float> AudioPluginAudioProcessor::mMidiInfo::testMidiInfo(
         {           
             isNoteOn = true;
             currentIndex = 0.0f; //重置振荡器的相位索引
-            noteNumber = message.getNoteNumber();
+            noteNumber = message.getNoteNumber() + 12;
             velocity = message.getFloatVelocity(); //归一化力度
             midiGain.setTargetValue(
                 velocity); //将力度值设置为平滑器的目标值

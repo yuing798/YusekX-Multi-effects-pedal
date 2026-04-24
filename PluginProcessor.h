@@ -9,6 +9,7 @@
 #include "plugins/Booster/base_overdrive.h"
 #include "plugins/Delay/base_delay.h"
 #include "plugins/Delay/sine_surround.h"
+#include "plugins/EQ/eq.h"
 #include "plugins/MOD/multiChannelsChorus.h"
 #include "plugins/Tremolo/base_tremolo.h"
 #include "plugins/plugins.h"
@@ -102,6 +103,7 @@ private:
     SineSurroundProcessor mSineSurroundProcessor;
     YOK3508Processor mYOK3508Processor;
     baseOverdriveProcessor  mBaseOverdriveProcessor;
+    baseEQProcessor mBaseEQProcessor;
 
     float processTime{ 0.0f };
     int processCount{ 0 };

@@ -4,3 +4,4 @@
 #include "Delay/sine_surround.h"
 #include "Tremolo/base_tremolo.h"
 #include "Booster/base_overdrive.h"
+#include "EQ/eq.h"

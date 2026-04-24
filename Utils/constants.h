@@ -49,6 +49,11 @@ static constexpr const char* BaseOverdriveOutputLevelId = "baseOverdriveOutputLe
 static constexpr const char* BaseOverdriveMixId = "baseOverdriveMix";
 static constexpr const char* BaseOverdriveToneId = "baseOverdriveTone";
 
+//eq均衡器ID
+static constexpr const char* BaseEQOpenId = "baseEQOpen";
+static constexpr const char* BaseEQBassPassId = "baseEQBassPass";
+static constexpr const char* BaseEQMiddlePassId = "baseEQMiddlePass";
+static constexpr const char* BaseEQTreblePassId = "baseEQTreblePass";
 
 //attachment别名
 using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
