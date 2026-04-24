@@ -36,7 +36,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (
     addAndMakeVisible(mYOK3508Editor);
     addAndMakeVisible(mBaseOverdriveEditor);
     addAndMakeVisible(mBaseEQEditor);
-    setSize (1200, 700);
+    setSize (1200, 800);
     
 }
 

@@ -55,6 +55,14 @@ static constexpr const char* BaseEQBassPassId = "baseEQBassPass";
 static constexpr const char* BaseEQMiddlePassId = "baseEQMiddlePass";
 static constexpr const char* BaseEQTreblePassId = "baseEQTreblePass";
 
+//base compressor压缩器ID
+static constexpr const char* BaseCompressorOpenId = "baseCompressorOpen";
+static constexpr const char* BaseCompressorThresoldId = "baseCompressorThresold";
+static constexpr const char* BaseCompressorRatioId = "baseCompressorRatio";
+static constexpr const char* BaseCompressorAttackTimeId = "baseCompressorAttackTime";
+static constexpr const char* BaseCompressorReleaseTimeId = "baseCompressorReleaseTime";
+static constexpr const char* BaseCompressorMakeupGainId = "baseCompressorMakeupGain";
+
 //attachment别名
 using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
 using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;

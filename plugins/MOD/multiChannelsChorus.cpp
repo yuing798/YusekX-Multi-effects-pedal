@@ -222,6 +222,13 @@ void YOK3508Processor::prepareToPlay(
 
     finalWetBuffer.setSize(2, maximumBlockSize);
     finalWetBuffer.clear();
+
+    mSmoothedDepthMs.reset(mCurrentSampleRate, 0.02);
+    mSmoothedRateHz.reset(mCurrentSampleRate, 0.02);
+    mSmoothedMix.reset(mCurrentSampleRate, 0.02);
+    mSmoothedFeedback.reset(mCurrentSampleRate, 0.02);
+    mSmoothedBaseDelayMs.reset(mCurrentSampleRate, 0.02);
+    mSmoothedPhaseOffsetMs.reset(mCurrentSampleRate, 0.02);
 }
 
 void YOK3508Processor::mUpdateProcessorParameters()
@@ -233,12 +240,7 @@ void YOK3508Processor::mUpdateProcessorParameters()
 	mSmoothedBaseDelayMs.setTargetValue(mBaseDelayMs);
 	mSmoothedPhaseOffsetMs.setTargetValue(mPhaseOffsetMs);
 
-    mSmoothedDepthMs.reset(mCurrentSampleRate, 0.02);
-    mSmoothedRateHz.reset(mCurrentSampleRate, 0.02);
-    mSmoothedMix.reset(mCurrentSampleRate, 0.02);
-    mSmoothedFeedback.reset(mCurrentSampleRate, 0.02);
-    mSmoothedBaseDelayMs.reset(mCurrentSampleRate, 0.02);
-    mSmoothedPhaseOffsetMs.reset(mCurrentSampleRate, 0.02);
+
 }
 
 void YOK3508Processor::processThreeChannelsChorus(

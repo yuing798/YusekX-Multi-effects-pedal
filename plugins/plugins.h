@@ -5,3 +5,4 @@
 #include "Tremolo/base_tremolo.h"
 #include "Booster/base_overdrive.h"
 #include "EQ/eq.h"
+#include "dynamics/base_compressor.h"
