@@ -6,6 +6,7 @@
 #include "plugins/EQ/eq.h"
 #include "plugins/MOD/multiChannelsChorus.h"
 #include "plugins/Tremolo/base_tremolo.h"
+#include "plugins/dynamics/base_compressor.h"
 #include "plugins/plugins.h"
 
 //==============================================================================
@@ -31,12 +32,13 @@ private:
 
     juce::TextButton testButton { "midi test on" };
 
-    BaseDelayEditor mBaseDelayEditor;
-    BaseTremoloEditor mBaseTremoloEditor;
-    SineSurroundEditor mSineSurroundEditor;
-    YOK3508Editor mYOK3508Editor;
-    baseOverdriveEditor mBaseOverdriveEditor;
-    baseEQEditor mBaseEQEditor;
+    // BaseDelayEditor mBaseDelayEditor;
+    // BaseTremoloEditor mBaseTremoloEditor;
+    // SineSurroundEditor mSineSurroundEditor;
+    // YOK3508Editor mYOK3508Editor;
+    // baseOverdriveEditor mBaseOverdriveEditor;
+    // baseEQEditor mBaseEQEditor;
+    BaseCompressorEditor mBaseCompressorEditor;
     
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessorEditor)

@@ -21,12 +21,13 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
             nullptr, //撤销记录管理器
             "Parameters", //根节点标签名
             createParameterLayout()),
-            mBaseDelayProcessor(apvts),
-            mBaseTremoloProcessor(apvts),
-            mSineSurroundProcessor(apvts),
-            mYOK3508Processor(apvts),
-            mBaseOverdriveProcessor(apvts),
-            mBaseEQProcessor(apvts)
+            // mBaseDelayProcessor(apvts),
+            // mBaseTremoloProcessor(apvts),
+            // mSineSurroundProcessor(apvts),
+            // mYOK3508Processor(apvts),
+            // mBaseOverdriveProcessor(apvts),
+            // mBaseEQProcessor(apvts),
+            mBaseCompressorProcessor(apvts)
                         
 {
     table.initSineTable(table.sineTable, bufferSize);
@@ -65,7 +66,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     YOK3508Processor::createParameterLayout(parameters);
     baseOverdriveProcessor::createParameterLayout(parameters);
     baseEQProcessor::createParameterLayout(parameters);
-
+    BaseCompressorProcessor::createParameterLayout(parameters);
 
     return { parameters.begin(), parameters.end() };
 }
@@ -82,12 +83,13 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     mMidiInfo.midiGain.reset(sampleRate, 0.1); //设置平滑器的采样率和时间常数
     mMidiInfo.midiGain.setCurrentAndTargetValue(0.0f); //初始化平滑器的当前值和目标值
 
-    mBaseDelayProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
-    mBaseTremoloProcessor.prepareToPlay(sampleRate);
-    mSineSurroundProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
-    mYOK3508Processor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
-    mBaseOverdriveProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
-    mBaseEQProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+    // mBaseDelayProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+    // mBaseTremoloProcessor.prepareToPlay(sampleRate);
+    // mSineSurroundProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+    // mYOK3508Processor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+    // mBaseOverdriveProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+    // mBaseEQProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+    mBaseCompressorProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -161,11 +163,11 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     }
     // auto startTime = std::chrono::high_resolution_clock::now(); //记录处理开始时间
     
-    mBaseDelayProcessor.processDelay(
-        buffer, 
-        0, 
-        numSamples, 
-        totalNumOutputChannels);//35.735微秒
+    // mBaseDelayProcessor.processDelay(
+    //     buffer, 
+    //     0, 
+    //     numSamples, 
+    //     totalNumOutputChannels);//35.735微秒
 
     // auto endTime = std::chrono::high_resolution_clock::now(); //记录处理结束时间
     // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count(); //计算处理时间
@@ -177,42 +179,44 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     //     processTime = 0.0f;
     //     processCount = 0;
     // }
-    mBaseTremoloProcessor.processTremolo(
-       buffer,
-       0,
-       numSamples,
-       totalNumOutputChannels,
-       table.sineTable
-    );//35.276微秒
+    // mBaseTremoloProcessor.processTremolo(
+    //    buffer,
+    //    0,
+    //    numSamples,
+    //    totalNumOutputChannels,
+    //    table.sineTable
+    // );//35.276微秒
 
 
-    mSineSurroundProcessor.processSineSurround(
-        buffer,
-        0,
-        numSamples,
-        totalNumOutputChannels,
-        table.sineTable
-    );//41.783微秒
+    // mSineSurroundProcessor.processSineSurround(
+    //     buffer,
+    //     0,
+    //     numSamples,
+    //     totalNumOutputChannels,
+    //     table.sineTable
+    // );//41.783微秒
 
 
 
-    mYOK3508Processor.processThreeChannelsChorus(
-        buffer,
-        0,
-        numSamples,
-        totalNumOutputChannels,
-        table.sineTable,
-        table.cosTable);//179.225微秒
+    // mYOK3508Processor.processThreeChannelsChorus(
+    //     buffer,
+    //     0,
+    //     numSamples,
+    //     totalNumOutputChannels,
+    //     table.sineTable,
+    //     table.cosTable);//179.225微秒
 
-    mBaseOverdriveProcessor.processBlock(
-        buffer,
-        0,
-        numSamples,
-        totalNumOutputChannels,
-        table.sineTable,
-        table.cosTable);
+    // mBaseOverdriveProcessor.processBlock(
+    //     buffer,
+    //     0,
+    //     numSamples,
+    //     totalNumOutputChannels,
+    //     table.sineTable,
+    //     table.cosTable);
 
-    mBaseEQProcessor.processBlock(buffer, 0, numSamples, totalNumOutputChannels);
+    // mBaseEQProcessor.processBlock(buffer, 0, numSamples, totalNumOutputChannels);
+
+    mBaseCompressorProcessor.processCompressor(buffer, 0, numSamples, totalNumOutputChannels);
 
     for (int channel = 0; channel < totalNumOutputChannels; ++channel)
     {
@@ -238,7 +242,7 @@ std::vector<float> AudioPluginAudioProcessor::mMidiInfo::testMidiInfo(
         {           
             isNoteOn = true;
             currentIndex = 0.0f; //重置振荡器的相位索引
-            noteNumber = message.getNoteNumber() + 12;
+            noteNumber = message.getNoteNumber() ;
             velocity = message.getFloatVelocity(); //归一化力度
             midiGain.setTargetValue(
                 velocity); //将力度值设置为平滑器的目标值

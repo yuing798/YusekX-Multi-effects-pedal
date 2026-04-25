@@ -6,7 +6,37 @@ BaseCompressorProcessor::BaseCompressorProcessor(juce::AudioProcessorValueTreeSt
 //TODO2:Editor构造函数
 BaseCompressorEditor::BaseCompressorEditor(juce::AudioProcessorValueTreeState& apvts)
     : mAPVTS(apvts){
+
+    mOpenCloseButton.setClickingTogglesState(true);
     addAndMakeVisible(mOpenCloseButton);//使得所有UI相关模块显现
+	mOpenCloseButton.onClick = [this]{
+
+        const auto isOpen = mOpenCloseButton.getToggleState();
+        mOpenCloseButton.setButtonText(isOpen ? "Close" : "Open");
+	};
+
+    addAndMakeVisible(mTitle);
+    mTitle.setText("Compressor", juce::dontSendNotification);
+
+    addAndMakeVisible(thresoldDBLabel);
+    thresoldDBLabel.setText("Thresold", juce::dontSendNotification);
+    addAndMakeVisible(thresoldDBSlider);
+
+    addAndMakeVisible(ratioLabel);
+    ratioLabel.setText("Ratio", juce::dontSendNotification);
+    addAndMakeVisible(ratioSlider);
+
+    addAndMakeVisible(attackTimeLabel);
+    attackTimeLabel.setText("Attack Time", juce::dontSendNotification);
+    addAndMakeVisible(attackTimeSlider);
+
+    addAndMakeVisible(releaseTimeLabel);
+    releaseTimeLabel.setText("Release Time", juce::dontSendNotification);
+    addAndMakeVisible(releaseTimeSlider);
+
+    addAndMakeVisible(makeupGainLabel);
+    makeupGainLabel.setText("Makeup Gain", juce::dontSendNotification);
+    addAndMakeVisible(makeupGainSlider);
 
     bindParameters();//将UI和APVTS参数绑定的函数放在构造函数中
 }
@@ -37,17 +67,17 @@ void BaseCompressorProcessor::createParameterLayout(
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID { BaseCompressorAttackTimeId, 1 },
         "Attack Time",
-        juce::NormalisableRange<float>(0.1f, 100.0f, 0.1f),
+        juce::NormalisableRange<float>(0.1f, 200.0f, 0.1f),
         10.0f));
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID { BaseCompressorReleaseTimeId, 1 },
         "Release Time",
-        juce::NormalisableRange<float>(10.0f, 500.0f, 0.1f),
+        juce::NormalisableRange<float>(10.0f, 2000.0f, 0.1f),
         100.0f));
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID { BaseCompressorMakeupGainId, 1 },
         "Makeup Gain",
-        juce::NormalisableRange<float>(-20.0f, 20.0f, 0.1f),
+        juce::NormalisableRange<float>(0.0f, 24.0f, 0.1f),
         0.0f));
 }
 
@@ -107,7 +137,7 @@ void BaseCompressorProcessor::syncParametersFromAPVTS()
 {
     //if语句用来判断ID正确以及参数是否已经被注册
     if (auto* openParameter = mAPVTS.getRawParameterValue(BaseCompressorOpenId))
-        mIsOpen = openParameter->load() >= 0.5f;
+        isOpen = openParameter->load() >= 0.5f;
 
     if (auto* thresoldParameter = mAPVTS.getRawParameterValue(BaseCompressorThresoldId))
         thresoldDB = thresoldParameter->load();
@@ -129,18 +159,21 @@ void BaseCompressorProcessor::syncParametersFromAPVTS()
 //初始化
 void BaseCompressorProcessor::prepareToPlay(double sampleRate, int maximumBlockSize, int numChannels)
 {
-    mCurrentSampleRate = sampleRate;
+    currentSampleRate = sampleRate;
 
 
     //初始化同步
     syncParametersFromAPVTS();
     updateProcessorParameters();
 
-    mSmoothedThresoldDB.reset(mCurrentSampleRate, 0.02);
-    mSmoothedRatio.reset(mCurrentSampleRate, 0.02);
-    mSmoothedAttackTimeMs.reset(mCurrentSampleRate, 0.02);
-    mSmoothedReleaseTimeMs.reset(mCurrentSampleRate, 0.02);
-    mSmoothedMakeupGainDB.reset(mCurrentSampleRate, 0.02);
+    mSmoothedThresoldDB.reset(currentSampleRate, 0.02);
+    mSmoothedRatio.reset(currentSampleRate, 0.02);
+    mSmoothedAttackTimeMs.reset(currentSampleRate, 0.02);
+    mSmoothedReleaseTimeMs.reset(currentSampleRate, 0.02);
+    mSmoothedMakeupGainDB.reset(currentSampleRate, 0.02);
+
+    attackAndReleaseLeft.setValue(currentSampleRate, attackTimeMs);
+    attackAndReleaseRight.setValue(currentSampleRate, attackTimeMs);
 }
 
 
@@ -165,7 +198,7 @@ void BaseCompressorProcessor::processCompressor(
     syncParametersFromAPVTS();
     updateProcessorParameters();//平滑度更新不用放在for循环中
 
-    if (!mIsOpen)
+    if (!isOpen)
         return;
 
     processBlock(buffer, startSample, numSamples, numChannels);
@@ -195,18 +228,65 @@ void BaseCompressorProcessor::processBlock(
         float inputSampleLeft = channelDataLeft[sampleIndex];
         //对左声道进行处理，处理完后写回channelDataLeft[sampleIndex]
 
-        //转换为dB，避免log(0)导致的负无穷大
+        //转换为dB，1e-6f避免log(0)导致的负无穷大
         float inputSampleLeftDB = juce::Decibels::gainToDecibels(std::abs(inputSampleLeft) + 1e-6f);
+        float gainLeftDB = 0.0f;
 
-        if(inputSampleLeftDB > currentThresoldDB){
-           
-        } 
+        float slope = 1.0f - 1.0f / currentRatio;
+        float over = inputSampleLeftDB - currentThresoldDB;
+        float k = over + kneeRangeDB * 0.5f;//中间系数，方便计算，没有物理意义
+        if(over > kneeRangeDB * 0.5f){
+            gainLeftDB =  over * slope;
+        } else if(over > -kneeRangeDB * 0.5f){
+            gainLeftDB = slope * k * k / (2 * kneeRangeDB);
+        }
 
-        
+        if(gainLeftDB > attackAndReleaseLeft.y1){//和前一个采样值比较进行逻辑判断，而不是和阈值进行判断
+            if(mSmoothedAttackTimeMs.isSmoothing())
+                attackAndReleaseLeft.setValue(currentSampleRate, currentAttackTimeMs);
+        } else{
+            if(mSmoothedReleaseTimeMs.isSmoothing())
+                attackAndReleaseLeft.setValue(currentSampleRate, currentReleaseTimeMs);
+        }//这个if语句要放在“增益计算 (Gain Computer)：计算如果不考虑平滑，理论上应该压掉多少 dB”之后
+
+        gainLeftDB = attackAndReleaseLeft.processSample(gainLeftDB);
+
+        //将处理后的dB值转换回线性增益
+        float gainLeft = juce::Decibels::decibelsToGain(gainLeftDB + currentMakeupGainDB) ;
+
+        channelDataLeft[sampleIndex] = inputSampleLeft * gainLeft;
 
         if(numChannels > 1){
             float inputSampleRight = channelDataRight[sampleIndex];
             //对右声道进行处理，处理完后写回channelDataRight[sampleIndex]
+
+            //转换为dB，1e-6f避免log(0)导致的负无穷大
+            float inputSampleRightDB = juce::Decibels::gainToDecibels(std::abs(inputSampleRight) + 1e-6f);
+            float gainRightDB = 0.0f;
+
+            float slopeRight = 1.0f - 1.0f / currentRatio;
+            float overRight = inputSampleRightDB - currentThresoldDB;
+            float kRight = overRight + kneeRangeDB * 0.5f;//中间系数，方便计算，没有物理意义
+            if(overRight > kneeRangeDB * 0.5f){
+                gainRightDB =  overRight * slopeRight;
+            } else if(overRight > -kneeRangeDB * 0.5f){
+                gainRightDB = slopeRight * kRight * kRight / (2 * kneeRangeDB);
+            }
+
+            if(gainRightDB > attackAndReleaseRight.y1){//和前一个采样值比较进行逻辑判断，而不是和阈值进行判断
+                if(mSmoothedAttackTimeMs.isSmoothing())
+                    attackAndReleaseRight.setValue(currentSampleRate, currentAttackTimeMs);
+            } else{
+                if(mSmoothedReleaseTimeMs.isSmoothing())
+                    attackAndReleaseRight.setValue(currentSampleRate, currentReleaseTimeMs);
+            }//这个if语句要放在“增益计算 (Gain Computer)：计算如果不考虑平滑，理论上应该压掉多少 dB”之后
+
+            gainRightDB = attackAndReleaseRight.processSample(gainRightDB);
+
+            //将处理后的dB值转换回线性增益
+            float gainRight = juce::Decibels::decibelsToGain(gainRightDB + currentMakeupGainDB) ;
+
+            channelDataRight[sampleIndex] = inputSampleRight * gainRight;
         }
     }
 }

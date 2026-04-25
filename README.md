@@ -111,6 +111,4 @@ cmake --build --preset debug
 
 ---
 
-<audio src="input_1.wav" controls>我的音频</audio>
 
-[点击播放音频](https://yusekx-audio-host.oss-cn-shanghai.aliyuncs.com/input_1.wav)

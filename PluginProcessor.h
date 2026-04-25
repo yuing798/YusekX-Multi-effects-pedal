@@ -98,12 +98,13 @@ private:
 
     }table;//把查询表都放在主函数初始化
 
-    BaseDelayProcessor mBaseDelayProcessor;
-    BaseTremoloProcessor mBaseTremoloProcessor;
-    SineSurroundProcessor mSineSurroundProcessor;
-    YOK3508Processor mYOK3508Processor;
-    baseOverdriveProcessor  mBaseOverdriveProcessor;
-    baseEQProcessor mBaseEQProcessor;
+    // BaseDelayProcessor mBaseDelayProcessor;
+    // BaseTremoloProcessor mBaseTremoloProcessor;
+    // SineSurroundProcessor mSineSurroundProcessor;
+    // YOK3508Processor mYOK3508Processor;
+    // baseOverdriveProcessor  mBaseOverdriveProcessor;
+    // baseEQProcessor mBaseEQProcessor;
+    BaseCompressorProcessor mBaseCompressorProcessor;
 
     float processTime{ 0.0f };
     int processCount{ 0 };

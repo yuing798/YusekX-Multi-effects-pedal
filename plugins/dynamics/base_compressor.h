@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <cmath>
 #include <memory>
 #include "Utils/constants.h"
 #include "juce_audio_basics/juce_audio_basics.h"
@@ -48,14 +49,15 @@ class BaseCompressorProcessor
 {
 private:
 
-    float mCurrentSampleRate { defaultSampleRate };
+    float currentSampleRate { defaultSampleRate };
 
-    bool mIsOpen { false };
+    bool isOpen { false };
     float thresoldDB { -20.0f };//阈值
     float ratio { 4.0f };//压缩比
     float attackTimeMs { 10.0f };//启动时间
     float releaseTimeMs { 100.0f };//释放时间
     float makeupGainDB { 0.0f };//补偿增益
+    
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedThresoldDB { 1.0f };
@@ -67,6 +69,34 @@ private:
         mSmoothedReleaseTimeMs { 1.0f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedMakeupGainDB { 1.0f };
+
+    struct attackAndReleaseFilter{
+        float b0{0.0f};
+        float b1{0.0f};//分子
+        float a0{1.0f};//分母
+
+        float y1{0.0f};//上一个输出样本
+
+        float currentAlpha{0.0f};//当前的alpha值
+
+        void setValue(float sampleRate, float timeMs){
+            currentAlpha = 1 - std::exp(-1 / (sampleRate * timeMs * 0.001f));
+            b1 = 1 - currentAlpha;
+            a0 = currentAlpha;
+        }
+
+        float processSample(float inputSample){
+            float outputSample = b1 * y1 + a0 * inputSample;
+            y1 = outputSample;
+            return outputSample;
+        }
+    };
+
+    attackAndReleaseFilter attackAndReleaseLeft;
+    attackAndReleaseFilter attackAndReleaseRight;
+
+    float kneeRangeDB { 10.0f };
+
 
     juce::AudioProcessorValueTreeState& mAPVTS;
 
