@@ -236,12 +236,15 @@ void BaseCompressorProcessor::processBlock(
         float over = inputSampleLeftDB - currentThresoldDB;
         float k = over + kneeRangeDB * 0.5f;//中间系数，方便计算，没有物理意义
         if(over > kneeRangeDB * 0.5f){
-            gainLeftDB =  over * slope;
+            //(targetDB - thresoldDB) / (inputDB - thresoldDB) = 1 / ratio
+            gainLeftDB =  - over * slope;
         } else if(over > -kneeRangeDB * 0.5f){
-            gainLeftDB = slope * k * k / (2 * kneeRangeDB);
+            //在 $over = -W/2$ 处，它的值是 $0$，且斜率也是 $0$（完美衔接不压缩区域）。
+            // 在 $over = W/2$ 处，它的值和斜率都与直线压缩区域完全相等。
+            gainLeftDB = - slope * k * k / (2 * kneeRangeDB);
         }
 
-        if(gainLeftDB > attackAndReleaseLeft.y1){//和前一个采样值比较进行逻辑判断，而不是和阈值进行判断
+        if(gainLeftDB < attackAndReleaseLeft.y1){//和前一个采样值比较进行逻辑判断，而不是和阈值进行判断
             if(mSmoothedAttackTimeMs.isSmoothing())
                 attackAndReleaseLeft.setValue(currentSampleRate, currentAttackTimeMs);
         } else{
@@ -268,12 +271,12 @@ void BaseCompressorProcessor::processBlock(
             float overRight = inputSampleRightDB - currentThresoldDB;
             float kRight = overRight + kneeRangeDB * 0.5f;//中间系数，方便计算，没有物理意义
             if(overRight > kneeRangeDB * 0.5f){
-                gainRightDB =  overRight * slopeRight;
+                gainRightDB = - overRight * slopeRight;
             } else if(overRight > -kneeRangeDB * 0.5f){
-                gainRightDB = slopeRight * kRight * kRight / (2 * kneeRangeDB);
+                gainRightDB = - slopeRight * kRight * kRight / (2 * kneeRangeDB);
             }
 
-            if(gainRightDB > attackAndReleaseRight.y1){//和前一个采样值比较进行逻辑判断，而不是和阈值进行判断
+            if(gainRightDB < attackAndReleaseRight.y1){//和前一个采样值比较进行逻辑判断，而不是和阈值进行判断
                 if(mSmoothedAttackTimeMs.isSmoothing())
                     attackAndReleaseRight.setValue(currentSampleRate, currentAttackTimeMs);
             } else{
