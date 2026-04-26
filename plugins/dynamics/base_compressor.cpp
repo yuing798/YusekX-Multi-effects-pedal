@@ -175,11 +175,8 @@ void BaseCompressorProcessor::prepareToPlay(double sampleRate, int maximumBlockS
     attackAndReleaseLeft.setAttackAlpha(sampleRate, attackTimeMs);
     attackAndReleaseLeft.setReleaseAlpha(sampleRate, releaseTimeMs);
 
-    attackAndReleaseRight.setAttackAlpha(sampleRate, attackTimeMs);
-    attackAndReleaseRight.setReleaseAlpha(sampleRate, releaseTimeMs);
-
     attackAndReleaseLeft.setValue(attackAndReleaseLeft.attackAlpha);
-    attackAndReleaseRight.setValue(attackAndReleaseRight.attackAlpha);
+    attackAndReleaseRight.setValue(attackAndReleaseLeft.attackAlpha);
 }
 
 
