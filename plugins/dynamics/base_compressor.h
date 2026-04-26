@@ -77,10 +77,18 @@ private:
 
         float y1{0.0f};//上一个输出样本
 
-        float currentAlpha{0.0f};//当前的alpha值
+        float attackAlpha{0.0f};//攻击时间对应的alpha值
+        float releaseAlpha{0.0f};//释放时间对应的alpha值
 
-        void setValue(float sampleRate, float timeMs){
-            currentAlpha = 1 - std::exp(-1 / (sampleRate * timeMs * 0.001f));
+        void setAttackAlpha(float sampleRate, float attackTimeMs){
+            attackAlpha = 1 - std::exp(-1 / (sampleRate * attackTimeMs * 0.001f));
+        }
+
+        void setReleaseAlpha(float sampleRate, float releaseTimeMs){    
+            releaseAlpha = 1 - std::exp(-1 / (sampleRate * releaseTimeMs * 0.001f));
+        }
+
+        void setValue(float currentAlpha){
             b1 = 1 - currentAlpha;
             a0 = currentAlpha;
         }

@@ -172,8 +172,14 @@ void BaseCompressorProcessor::prepareToPlay(double sampleRate, int maximumBlockS
     mSmoothedReleaseTimeMs.reset(currentSampleRate, 0.02);
     mSmoothedMakeupGainDB.reset(currentSampleRate, 0.02);
 
-    attackAndReleaseLeft.setValue(currentSampleRate, attackTimeMs);
-    attackAndReleaseRight.setValue(currentSampleRate, attackTimeMs);
+    attackAndReleaseLeft.setAttackAlpha(sampleRate, attackTimeMs);
+    attackAndReleaseLeft.setReleaseAlpha(sampleRate, releaseTimeMs);
+
+    attackAndReleaseRight.setAttackAlpha(sampleRate, attackTimeMs);
+    attackAndReleaseRight.setReleaseAlpha(sampleRate, releaseTimeMs);
+
+    attackAndReleaseLeft.setValue(attackAndReleaseLeft.attackAlpha);
+    attackAndReleaseRight.setValue(attackAndReleaseRight.attackAlpha);
 }
 
 
@@ -224,6 +230,11 @@ void BaseCompressorProcessor::processBlock(
         float currentAttackTimeMs = mSmoothedAttackTimeMs.getNextValue();
         float currentReleaseTimeMs = mSmoothedReleaseTimeMs.getNextValue();
         float currentMakeupGainDB = mSmoothedMakeupGainDB.getNextValue();
+        if(mSmoothedAttackTimeMs.isSmoothing())
+            attackAndReleaseLeft.setAttackAlpha(currentSampleRate, currentAttackTimeMs);
+            
+        if(mSmoothedReleaseTimeMs.isSmoothing())
+            attackAndReleaseLeft.setReleaseAlpha(currentSampleRate, currentReleaseTimeMs);
 
         float inputSampleLeft = channelDataLeft[sampleIndex];
         //对左声道进行处理，处理完后写回channelDataLeft[sampleIndex]
@@ -244,12 +255,11 @@ void BaseCompressorProcessor::processBlock(
             gainLeftDB = - slope * k * k / (2 * kneeRangeDB);
         }
 
+
         if(gainLeftDB < attackAndReleaseLeft.y1){//和前一个采样值比较进行逻辑判断，而不是和阈值进行判断
-            if(mSmoothedAttackTimeMs.isSmoothing())
-                attackAndReleaseLeft.setValue(currentSampleRate, currentAttackTimeMs);
+            attackAndReleaseLeft.setValue(attackAndReleaseLeft.attackAlpha);
         } else{
-            if(mSmoothedReleaseTimeMs.isSmoothing())
-                attackAndReleaseLeft.setValue(currentSampleRate, currentReleaseTimeMs);
+            attackAndReleaseLeft.setValue(attackAndReleaseLeft.releaseAlpha);
         }//这个if语句要放在“增益计算 (Gain Computer)：计算如果不考虑平滑，理论上应该压掉多少 dB”之后
 
         gainLeftDB = attackAndReleaseLeft.processSample(gainLeftDB);
@@ -267,21 +277,19 @@ void BaseCompressorProcessor::processBlock(
             float inputSampleRightDB = juce::Decibels::gainToDecibels(std::abs(inputSampleRight) + 1e-6f);
             float gainRightDB = 0.0f;
 
-            float slopeRight = 1.0f - 1.0f / currentRatio;
             float overRight = inputSampleRightDB - currentThresoldDB;
             float kRight = overRight + kneeRangeDB * 0.5f;//中间系数，方便计算，没有物理意义
             if(overRight > kneeRangeDB * 0.5f){
-                gainRightDB = - overRight * slopeRight;
+                gainRightDB = - overRight * slope;
             } else if(overRight > -kneeRangeDB * 0.5f){
-                gainRightDB = - slopeRight * kRight * kRight / (2 * kneeRangeDB);
+                gainRightDB = - slope * kRight * kRight / (2 * kneeRangeDB);
             }
 
             if(gainRightDB < attackAndReleaseRight.y1){//和前一个采样值比较进行逻辑判断，而不是和阈值进行判断
-                if(mSmoothedAttackTimeMs.isSmoothing())
-                    attackAndReleaseRight.setValue(currentSampleRate, currentAttackTimeMs);
+                attackAndReleaseRight.setValue(attackAndReleaseLeft.attackAlpha);
+                //两个实例的Alpha都一样，不同的只是y1的值，所以可以直接共用一个实例的Alpha
             } else{
-                if(mSmoothedReleaseTimeMs.isSmoothing())
-                    attackAndReleaseRight.setValue(currentSampleRate, currentReleaseTimeMs);
+                attackAndReleaseRight.setValue(attackAndReleaseLeft.releaseAlpha);
             }//这个if语句要放在“增益计算 (Gain Computer)：计算如果不考虑平滑，理论上应该压掉多少 dB”之后
 
             gainRightDB = attackAndReleaseRight.processSample(gainRightDB);
