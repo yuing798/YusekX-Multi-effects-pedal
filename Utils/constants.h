@@ -73,7 +73,7 @@ static constexpr const char* SchroederReverbRoomSizeId = "schroederReverbRoomSiz
 static constexpr const char* SchroederReverbBaseDelayTimeMsId = "schroederReverbBaseDelayTimeMs";
 static constexpr const char* SchroederReverbMakeUpGainId = "schroederReverbMakeUpGain";
 
-//combBaseLineLookUP
+//schroeder reverb中梳状滤波器和全通滤波器的基础延迟时间查找表，单位为采样点数
 static constexpr const int combBaseLineLookUp[8] = {1116,1188,1277,1356,1422,1491,1557,1617};
 static constexpr const int allPassBaseLineLookUp[4] = {225,341,441,556};
 

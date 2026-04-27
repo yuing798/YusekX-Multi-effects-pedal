@@ -1,7 +1,7 @@
 #include "SchroederReverb.h"
 #include "constants.h"
 #include "table.h"
-
+#include "mathFunc.h"
 
 SchroederReverbProcessor::SchroederReverbProcessor(juce::AudioProcessorValueTreeState& apvts)
     : mAPVTS(apvts){}
@@ -88,7 +88,7 @@ void SchroederReverbProcessor::createParameterLayout(
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID { SchroederReverbBaseDelayTimeMsId, 1 },
         "Schroeder Reverb Base Delay Time Ms",
-        juce::NormalisableRange<float>(1.0f, 100.0f, 0.01f),
+        juce::NormalisableRange<float>(1.0f, schroederReverbMaxBaseDelayTimeMs, 0.01f),
         10.0f));
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID { SchroederReverbMakeUpGainId, 1 },
@@ -189,6 +189,7 @@ void SchroederReverbProcessor::syncParametersFromAPVTS()
 void SchroederReverbProcessor::prepareToPlay(double sampleRate, int maximumBlockSize, int numChannels)
 {
     currentSampleRate = sampleRate;
+    currentMaximumBlockSize = maximumBlockSize;
 
 
     //初始化同步
@@ -203,8 +204,10 @@ void SchroederReverbProcessor::prepareToPlay(double sampleRate, int maximumBlock
     mSmoothedBaseDelayTimeMs.reset(sampleRate, 0.02);
     mSmoothedMakeUpGainDB.reset(sampleRate, 0.02);
 
-    dryLookUpTable(dryTable, bufferSize);
-    wetLookUpTable(wetTable, bufferSize);
+    dryLookUpTable(dryTable, currentMaximumBlockSize);
+    wetLookUpTable(wetTable, currentMaximumBlockSize);
+
+    makeUpGain = std::pow(10.0f, makeUpGainDB / 20.0f);
 }
 
 
@@ -262,6 +265,14 @@ void SchroederReverbProcessor::processBlock(
         float currentRoomSize = mSmoothedRoomSize.getNextValue();
         float currentBaseDelayTimeMs = mSmoothedBaseDelayTimeMs.getNextValue();
         float currentMakeUpGainDB = mSmoothedMakeUpGainDB.getNextValue();
+
+        float currentDry = dryTable[static_cast<int>(currentMixLevel * (dryTable.size() - 1))];
+        float currentWet = wetTable[static_cast<int>(currentMixLevel * (wetTable.size() - 1))];
+        float currentBaseDelaySamples = transformMsIntoSamples(currentBaseDelayTimeMs, currentSampleRate);
+
+        if (mSmoothedMakeUpGainDB.isSmoothing())
+            makeUpGain = std::pow(10.0f,currentMakeUpGainDB / 20.0f);
+
 
         float inputSampleLeft = channelDataLeft[sampleIndex];
         //对左声道进行处理，处理完后写回channelDataLeft[sampleIndex]
