@@ -16,6 +16,7 @@ private:
     juce::Slider dampHzSlider;//低通滤波器的截止频率
     juce::Slider roomSizeSlider;//房间尺寸，影响延迟时间
     juce::Slider baseDelayTimeMsSlider;//基础延迟时间，影响初始反射的时间
+    juce::Slider makeUpGainSlider;//补偿增益
 
 	juce::Label decayLevelLabel;
     juce::Label diffusionLevelLabel;
@@ -23,6 +24,7 @@ private:
     juce::Label dampHzLabel;
     juce::Label roomSizeLabel;
     juce::Label baseDelayTimeMsLabel;
+    juce::Label makeUpGainLabel;
 
 	std::unique_ptr<ButtonAttachment> mOpenCloseAttachment;
     std::unique_ptr<SliderAttachment> decayLevelAttachment;
@@ -31,7 +33,8 @@ private:
     std::unique_ptr<SliderAttachment> dampHzAttachment;
     std::unique_ptr<SliderAttachment> roomSizeAttachment;
     std::unique_ptr<SliderAttachment> baseDelayTimeMsAttachment;
-	
+    std::unique_ptr<SliderAttachment> makeUpGainAttachment;
+
 	void bindParameters();
 
     juce::AudioProcessorValueTreeState& mAPVTS;
@@ -55,6 +58,10 @@ private:
     float dampHz { 2000.0f };//低通滤波器的截止频率
     float roomSize { 0.5f };//房间尺寸，影响延迟时间
     float baseDelayTimeMs { 50.0f };//基础延迟时间，
+    float makeUpGainDB { 0.0f };//补偿增益
+
+    std::vector<float> dryTable;//干信号增益查找表，避免每次处理都进行powf计算
+    std::vector<float> wetTable;//湿信号增益查找表，避免每次处理都进行powf计算
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedDecayLevel { 1.0f };
@@ -68,6 +75,8 @@ private:
         mSmoothedRoomSize { 1.0f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedBaseDelayTimeMs { 1.0f };
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
+        mSmoothedMakeUpGainDB { 1.0f };
 
     void processBlock(
         juce::AudioBuffer<float>& buffer,

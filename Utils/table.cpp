@@ -34,3 +34,26 @@ void CosLookUpTable(std::vector<float>& cosTable, int tableSize){
         cosTable[index]= std::cos(phase);        
     }
 }
+
+void dryLookUpTable(std::vector<float>& dryTable, int tableSize){
+    dryTable.clear();
+    dryTable.resize(tableSize);
+
+    float halfPi = two_pi / 4;
+
+    for(int index = 0; index < tableSize; index++){
+        float phase = (static_cast<float>(index) / tableSize) * halfPi;
+        dryTable[index]= std::cos(phase);      
+    }
+}
+
+void wetLookUpTable(std::vector<float>& wetTable, int tableSize){
+    wetTable.clear();
+    wetTable.resize(tableSize);
+
+    float halfPi = two_pi / 4;
+    for(int index = 0; index < tableSize; index++){
+        float phase = (static_cast<float>(index) / tableSize) * halfPi;
+        wetTable[index] = std::sin(phase); // 正弦衰减曲线
+    }
+}   

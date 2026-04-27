@@ -1,5 +1,6 @@
 #include "SchroederReverb.h"
 #include "constants.h"
+#include "table.h"
 
 
 SchroederReverbProcessor::SchroederReverbProcessor(juce::AudioProcessorValueTreeState& apvts)
@@ -43,6 +44,10 @@ SchroederReverbEditor::SchroederReverbEditor(juce::AudioProcessorValueTreeState&
     baseDelayTimeMsLabel.setText("Base Delay Time", juce::dontSendNotification);
     addAndMakeVisible(baseDelayTimeMsSlider);
 
+    addAndMakeVisible(makeUpGainLabel);
+    makeUpGainLabel.setText("Makeup Gain", juce::dontSendNotification);
+    addAndMakeVisible(makeUpGainSlider);
+
     bindParameters();//将UI和APVTS参数绑定的函数放在构造函数中
 }
 
@@ -85,7 +90,11 @@ void SchroederReverbProcessor::createParameterLayout(
         "Schroeder Reverb Base Delay Time Ms",
         juce::NormalisableRange<float>(1.0f, 100.0f, 0.01f),
         10.0f));
-
+    parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID { SchroederReverbMakeUpGainId, 1 },
+        "Schroeder Reverb Make Up Gain",
+        juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f),
+        0.0f));
     //......
 }
 
@@ -120,6 +129,10 @@ void SchroederReverbEditor::bindParameters()
         mAPVTS,
         SchroederReverbBaseDelayTimeMsId,
         baseDelayTimeMsSlider);
+    makeUpGainAttachment = std::make_unique<SliderAttachment>(
+        mAPVTS,
+        SchroederReverbMakeUpGainId,
+        makeUpGainSlider);
 
     //......
 
@@ -144,6 +157,8 @@ void SchroederReverbEditor::resized()
     roomSizeSlider.setBounds(220, 170, 150, 30);
     baseDelayTimeMsLabel.setBounds(110, 210, 100, 30);
     baseDelayTimeMsSlider.setBounds(220, 210, 150, 30);
+    makeUpGainLabel.setBounds(110, 250, 100, 30);
+    makeUpGainSlider.setBounds(220, 250, 150, 30);
 
 }
 
@@ -166,6 +181,8 @@ void SchroederReverbProcessor::syncParametersFromAPVTS()
         roomSize = roomSizeParameter->load();
     if(auto* baseDelayTimeMsParameter = mAPVTS.getRawParameterValue(SchroederReverbBaseDelayTimeMsId))
         baseDelayTimeMs = baseDelayTimeMsParameter->load();
+    if(auto* makeUpGainParameter = mAPVTS.getRawParameterValue(SchroederReverbMakeUpGainId))
+        makeUpGainDB = makeUpGainParameter->load();
 }
 
 //初始化
@@ -184,6 +201,10 @@ void SchroederReverbProcessor::prepareToPlay(double sampleRate, int maximumBlock
     mSmoothedDampHz.reset(sampleRate, 0.02);
     mSmoothedRoomSize.reset(sampleRate, 0.02);
     mSmoothedBaseDelayTimeMs.reset(sampleRate, 0.02);
+    mSmoothedMakeUpGainDB.reset(sampleRate, 0.02);
+
+    dryLookUpTable(dryTable, bufferSize);
+    wetLookUpTable(wetTable, bufferSize);
 }
 
 
@@ -195,7 +216,7 @@ void SchroederReverbProcessor::updateProcessorParameters()
     mSmoothedDampHz.setTargetValue(dampHz);
     mSmoothedRoomSize.setTargetValue(roomSize);
     mSmoothedBaseDelayTimeMs.setTargetValue(baseDelayTimeMs);
-
+    mSmoothedMakeUpGainDB.setTargetValue(makeUpGainDB);
 
 }
 
@@ -223,5 +244,31 @@ void SchroederReverbProcessor::processBlock(
     int numSamples,
     int numChannels)
 {
-    //该函数不要写，请留空，DSP部分我要自己写
+    //执行链路
+    //预延迟——》并联梳状滤波器——》低通滤波器——》串联全通滤波器——》干湿混合——》增益补偿
+
+    auto *channelDataLeft = buffer.getWritePointer(0, startSample);
+    float * channelDataRight = nullptr;
+    if(numChannels > 1){
+        channelDataRight = buffer.getWritePointer(1, startSample);
+        //对右声道进行处理
+    }
+    for(int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++){
+
+        float currentDecayLevel = mSmoothedDecayLevel.getNextValue();
+        float currentDiffusionLevel = mSmoothedDiffusionLevel.getNextValue();
+        float currentMixLevel = mSmoothedMixLevel.getNextValue();
+        float currentDampHz = mSmoothedDampHz.getNextValue();
+        float currentRoomSize = mSmoothedRoomSize.getNextValue();
+        float currentBaseDelayTimeMs = mSmoothedBaseDelayTimeMs.getNextValue();
+        float currentMakeUpGainDB = mSmoothedMakeUpGainDB.getNextValue();
+
+        float inputSampleLeft = channelDataLeft[sampleIndex];
+        //对左声道进行处理，处理完后写回channelDataLeft[sampleIndex]
+
+        if(numChannels > 1){
+            float inputSampleRight = channelDataRight[sampleIndex];
+            //对右声道进行处理，处理完后写回channelDataRight[sampleIndex]
+        }
+    }
 }

@@ -71,6 +71,7 @@ static constexpr const char* SchroederReverbMixLevelId = "schroederReverbMixLeve
 static constexpr const char* SchroederReverbDampHzId = "schroederReverbDampHz";
 static constexpr const char* SchroederReverbRoomSizeId = "schroederReverbRoomSize";
 static constexpr const char* SchroederReverbBaseDelayTimeMsId = "schroederReverbBaseDelayTimeMs";
+static constexpr const char* SchroederReverbMakeUpGainId = "schroederReverbMakeUpGain";
 
 //combBaseLineLookUP
 static constexpr const int combBaseLineLookUp[8] = {1116,1188,1277,1356,1422,1491,1557,1617};
