@@ -6,9 +6,6 @@
 #include "Utils/mathFunc.h"
 
 
-static constexpr float schroederReverbMaxBaseDelayTimeMs { 200.0f };
-//最大基础延迟时间，单位为毫秒
-
 class SchroederReverbEditor final : public juce::Component
 {
 private:
@@ -56,7 +53,6 @@ class SchroederReverbProcessor{
 private:
     float currentSampleRate { defaultSampleRate };
     int currentMaximumBlockSize{bufferSize};
-    int maxBaseDelaySamples { 0 };
 
 
     bool isOpen { false };
@@ -73,23 +69,26 @@ private:
     std::vector<float> wetTable;//湿信号增益查找表，避免每次处理都进行powf计算
 
     struct combFilterSingle{//单个梳状滤波器结构体
-        std::vector<float> buffer;
+        std::vector<float> combDelayLineBuffer;
         int writeIndex{0};
-        int readIndex{0};
         int delaySamplesNum{0};
         int combBaseLineValue{0};//根据采样率和房间尺寸计算出的基础延迟时间对应的样本数，作为buffer大小的参考值
 
-        void prepare(float roomSize, float sampleRate){
+        void prepareToPlay(float roomSize, float sampleRate){
             delaySamplesNum = getNearestPrimeNumber(combBaseLineValue * sampleRate / defaultSampleRate * roomSize);
-            
+            writeIndex = 0;            
+        }
 
+        void setValue(bool isUptated, float sampleRate, float roomSize){
+            if(isUptated)
+                delaySamplesNum = getNearestPrimeNumber(combBaseLineValue * sampleRate / defaultSampleRate * roomSize);
         }
 
         float processSample(float inputSample, float feedback){
-            float outputSample = buffer[writeIndex];
-            buffer[writeIndex] = inputSample + feedback * outputSample;
-            writeIndex = (writeIndex + 1) % bufferSize;
-            return outputSample;
+            float readIndex = getCircularBufferIndex(writeIndex - delaySamplesNum, combDelayLineBuffer.size());
+            combDelayLineBuffer[writeIndex] = inputSample + feedback * combDelayLineBuffer[readIndex];
+            writeIndex = (writeIndex + 1) % combDelayLineBuffer.size();
+            
         }
     };
 
@@ -103,7 +102,29 @@ private:
         combFilterSingle comb7;
         combFilterSingle comb8;
 
-        int delayBufferSize{0};
+        void setCombBufferSize(float sampleRate){
+
+            //乘以2是为了在房间尺寸为2时也能保证足够的延迟时间，避免出现死锁问题
+            comb1.combDelayLineBuffer.resize(static_cast<int>(combBaseLineLookUp[0] * sampleRate / defaultSampleRate *2) + 1, 0.0f);
+            comb2.combDelayLineBuffer.resize(static_cast<int>(combBaseLineLookUp[1] * sampleRate / defaultSampleRate *2) + 1, 0.0f);
+            comb3.combDelayLineBuffer.resize(static_cast<int>(combBaseLineLookUp[2] * sampleRate / defaultSampleRate *2) + 1, 0.0f);
+            comb4.combDelayLineBuffer.resize(static_cast<int>(combBaseLineLookUp[3] * sampleRate / defaultSampleRate *2) + 1, 0.0f);
+            comb5.combDelayLineBuffer.resize(static_cast<int>(combBaseLineLookUp[4] * sampleRate / defaultSampleRate *2) + 1, 0.0f);
+            comb6.combDelayLineBuffer.resize(static_cast<int>(combBaseLineLookUp[5] * sampleRate / defaultSampleRate *2) + 1, 0.0f);
+            comb7.combDelayLineBuffer.resize(static_cast<int>(combBaseLineLookUp[6] * sampleRate / defaultSampleRate *2) + 1, 0.0f);
+            comb8.combDelayLineBuffer.resize(static_cast<int>(combBaseLineLookUp[7] * sampleRate / defaultSampleRate *2) + 1, 0.0f);
+        }
+
+        void setCombBaseLineValue(){
+            comb1.combBaseLineValue = combBaseLineLookUp[0];
+            comb2.combBaseLineValue = combBaseLineLookUp[1];
+            comb3.combBaseLineValue = combBaseLineLookUp[2];
+            comb4.combBaseLineValue = combBaseLineLookUp[3];
+            comb5.combBaseLineValue = combBaseLineLookUp[4];
+            comb6.combBaseLineValue = combBaseLineLookUp[5];
+            comb7.combBaseLineValue = combBaseLineLookUp[6];
+            comb8.combBaseLineValue = combBaseLineLookUp[7];
+        }
     };
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>

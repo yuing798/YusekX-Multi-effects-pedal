@@ -88,7 +88,7 @@ void SchroederReverbProcessor::createParameterLayout(
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID { SchroederReverbBaseDelayTimeMsId, 1 },
         "Schroeder Reverb Base Delay Time Ms",
-        juce::NormalisableRange<float>(1.0f, schroederReverbMaxBaseDelayTimeMs, 0.01f),
+        juce::NormalisableRange<float>(1.0f, 200.0f, 0.01f),
         10.0f));
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID { SchroederReverbMakeUpGainId, 1 },
