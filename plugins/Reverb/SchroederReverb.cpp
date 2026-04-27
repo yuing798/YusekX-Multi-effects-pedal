@@ -177,11 +177,25 @@ void SchroederReverbProcessor::prepareToPlay(double sampleRate, int maximumBlock
     //初始化同步
     syncParametersFromAPVTS();
     updateProcessorParameters();
+
+    mSmoothedDecayLevel.reset(sampleRate, 0.02);
+    mSmoothedDiffusionLevel.reset(sampleRate, 0.02);
+    mSmoothedMixLevel.reset(sampleRate, 0.02);
+    mSmoothedDampHz.reset(sampleRate, 0.02);
+    mSmoothedRoomSize.reset(sampleRate, 0.02);
+    mSmoothedBaseDelayTimeMs.reset(sampleRate, 0.02);
 }
 
 
 void SchroederReverbProcessor::updateProcessorParameters()
 {
+    mSmoothedDecayLevel.setTargetValue(decayLevel);
+    mSmoothedDiffusionLevel.setTargetValue(diffusionLevel);
+    mSmoothedMixLevel.setTargetValue(mixLevel);
+    mSmoothedDampHz.setTargetValue(dampHz);
+    mSmoothedRoomSize.setTargetValue(roomSize);
+    mSmoothedBaseDelayTimeMs.setTargetValue(baseDelayTimeMs);
+
 
 }
 

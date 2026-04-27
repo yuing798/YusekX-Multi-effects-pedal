@@ -26,3 +26,9 @@ float transformRadIntoMs(float rad, float sampleRate);
 
 //将毫秒转换为样本数
 float transformMsIntoSamples(float ms, float sampleRate);
+
+//辗转相除法求最大公约数
+int gcd(int a, int b);
+
+//查找最近素数
+int getNearestPrimeNumber(float num);

@@ -18,6 +18,8 @@
 7. 基本EQ均衡效果器
 8. 三支路合唱效果器
 
+效果器设计指南请查看:[设计指南](Guide-to-Effects-Pedal-Development)
+
 ## 项目框架
 pluginEditor文件：放置和UI线程相关的内容
 

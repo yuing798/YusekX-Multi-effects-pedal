@@ -63,10 +63,20 @@ static constexpr const char* BaseCompressorAttackTimeId = "baseCompressorAttackT
 static constexpr const char* BaseCompressorReleaseTimeId = "baseCompressorReleaseTime";
 static constexpr const char* BaseCompressorMakeupGainId = "baseCompressorMakeupGain";
 
+//schroeder reverb ID
+static constexpr const char* SchroederReverbOpenId = "schroederReverbOpen";
+static constexpr const char* SchroederReverbDecayLevelId = "schroederReverbDecayLevel";
+static constexpr const char* SchroederReverbDiffusionLevelId = "schroederReverbDiffusionLevel";
+static constexpr const char* SchroederReverbMixLevelId = "schroederReverbMixLevel";
+static constexpr const char* SchroederReverbDampHzId = "schroederReverbDampHz";
+static constexpr const char* SchroederReverbRoomSizeId = "schroederReverbRoomSize";
+static constexpr const char* SchroederReverbBaseDelayTimeMsId = "schroederReverbBaseDelayTimeMs";
+
+//combBaseLineLookUP
+static constexpr const int combBaseLineLookUp[8] = {1116,1188,1277,1356,1422,1491,1557,1617};
+static constexpr const int allPassBaseLineLookUp[4] = {225,341,441,556};
+
 //attachment别名
 using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
 using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
 using ComboBoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
-
-//产品代号
-//YOK3508:三模拟通道合唱效果器

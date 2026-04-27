@@ -25,3 +25,40 @@ float transformRadIntoMs(float rad, float sampleRate){
 float transformMsIntoSamples(float ms, float sampleRate){
     return (ms / 1000.0f) * sampleRate;
 }
+
+int gcd(int a,int b){
+    int temp = 1;
+    int max = std::max(a, b);
+    int min = std::min(a, b);
+    while(min != 0){
+        temp = min;
+        min = max % min;
+        max = temp;
+    }
+    return max;
+}
+
+int getNearestPrimeNumber(float num){
+    int value = static_cast<int>(num);
+    if(num <= 2) return 2;
+    for(int i = value; ; i++){
+        bool isPrime = true;
+        for(int j = 2; j <= std::sqrt(i); j++){
+            if(i % j == 0){
+                isPrime = false;
+                break;
+            }
+        }
+        if(isPrime) return i;
+    }
+    for(int i = value; i > 2; i--){
+        bool isPrime = true;
+        for(int j = 2; j <= std::sqrt(i); j++){
+            if(i % j == 0){
+                isPrime = false;
+                break;
+            }
+        }
+        if(isPrime) return i;
+    }//左边和右边都查找一遍
+}
