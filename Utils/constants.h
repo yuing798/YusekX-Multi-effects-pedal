@@ -7,6 +7,7 @@ static constexpr float two_pi{ 2.0f * 3.14159265358979323846f };
 static constexpr int numInputChannels{ 2 };
 static constexpr int numOutputChannels{ 2 };
 static constexpr float defaultSampleRate{ 44100.0f };
+static constexpr float Exp{2.718281828459f};
 
 //APVTS参数ID
 
@@ -74,8 +75,8 @@ static constexpr const char* SchroederReverbBaseDelayTimeMsId = "schroederReverb
 static constexpr const char* SchroederReverbMakeUpGainId = "schroederReverbMakeUpGain";
 
 //schroeder reverb中梳状滤波器和全通滤波器的基础延迟时间查找表，单位为采样点数
-static constexpr const int combBaseLineLookUp[8] = {1116,1188,1277,1356,1422,1491,1557,1617};
-static constexpr const int allPassBaseLineLookUp[4] = {225,341,441,556};
+static constexpr const int combDelayLineLookUp[8] = {1116,1188,1277,1356,1422,1491,1557,1617};
+static constexpr const int allPassDelayLineLookUp[4] = {225,341,441,556};
 
 //attachment别名
 using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
