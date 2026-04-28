@@ -70,23 +70,46 @@ private:
     std::vector<float> dryTable;//干信号增益查找表，避免每次处理都进行powf计算
     std::vector<float> wetTable;//湿信号增益查找表，避免每次处理都进行powf计算
 
-    struct combFilterSingle{//单个梳状滤波器结构体
-        //y[n] = x[n] + feedback * y[n - delaySamples]
+    struct preDelay{
+        std::vector<float> preDelayBuffer;
+        int writeIndex{0};
+        float delaySamplesNum{0};
+
+        void prepareToPlay(float sampleRate){
+            float maxDelaySamplesNum = transformMsIntoSamples(200.0f , sampleRate);//200.0f是最大预延迟时间
+            preDelayBuffer.resize(maxDelaySamplesNum + 1, 0.0f);
+            writeIndex = 0;
+        }
+
+        void setValue(float sampleRate, float baseDelayTimeMs){
+            delaySamplesNum = transformMsIntoSamples(baseDelayTimeMs, sampleRate);
+        }
+
+        float processSample(){
+            float readIndex = getCircularBufferIndex(writeIndex - delaySamplesNum, preDelayBuffer.size());
+            float readSample = getLinearInterpolator(preDelayBuffer.data(), preDelayBuffer.size(), readIndex);
+            writeIndex = getCircularBufferIndex(writeIndex + 1, preDelayBuffer.size());
+            return readSample;
+        }
+    };
+
+    struct combFilterSingle{//单个反馈梳状滤波器结构体
+        //y[n] = x[n] + decay * y[n - delaySamples]
         std::vector<float> combDelayLineBuffer;
     
         int writeIndex{0};//写指针八个滤波器共用同一个
         int delaySamplesNum{0};
-        int combBaseLineValue{0};//根据采样率和房间尺寸计算出的基础延迟时间对应的样本数，作为buffer大小的参考值
+        int combDelayLineValue{0};//根据采样率和房间尺寸计算出的基础延迟时间对应的样本数，作为buffer大小的参考值
 
         void setValue(float sampleRate, float roomSize){
 
-            delaySamplesNum = getNearestPrimeNumber(combBaseLineValue * sampleRate / defaultSampleRate * roomSize);
+            delaySamplesNum = getNearestPrimeNumber(combDelayLineValue * sampleRate / defaultSampleRate * roomSize);
         }
 
-        float processSample(float inputSample, float feedback){
+        float processSample(float inputSample, float decay){
             float readIndex = getCircularBufferIndex(writeIndex - delaySamplesNum, combDelayLineBuffer.size());
             float readSample = getLinearInterpolator(combDelayLineBuffer.data(), combDelayLineBuffer.size(), readIndex);
-            combDelayLineBuffer[writeIndex] = inputSample + feedback * readSample;
+            combDelayLineBuffer[writeIndex] = inputSample + decay * readSample;
             return combDelayLineBuffer[writeIndex];
         }
     };
@@ -106,7 +129,7 @@ private:
 
         void setCombBufferSize(float sampleRate){
 
-            combBufferSize = static_cast<int>(combBaseLineLookUp[7] * sampleRate / defaultSampleRate * 2) + 1;
+            combBufferSize = static_cast<int>(combDelayLineLookUp[7] * sampleRate / defaultSampleRate * 2) + 1;
             //乘以2是为了在房间尺寸为2时也能保证足够的延迟时间，避免出现死锁问题
             //所有梳状滤波器共用同一个缓冲区，大小根据最长的延迟时间来设置，确保在任何房间尺寸下都能正常工作
             comb1.combDelayLineBuffer.resize(combBufferSize, 0.0f);
@@ -119,19 +142,19 @@ private:
             comb8.combDelayLineBuffer.resize(combBufferSize, 0.0f);
         }
 
-        void setCombBaseLineValue(){
-            comb1.combBaseLineValue = combBaseLineLookUp[0];
-            comb2.combBaseLineValue = combBaseLineLookUp[1];
-            comb3.combBaseLineValue = combBaseLineLookUp[2];
-            comb4.combBaseLineValue = combBaseLineLookUp[3];
-            comb5.combBaseLineValue = combBaseLineLookUp[4];
-            comb6.combBaseLineValue = combBaseLineLookUp[5];
-            comb7.combBaseLineValue = combBaseLineLookUp[6];
-            comb8.combBaseLineValue = combBaseLineLookUp[7];
+        void setCombDelayLineValue(){
+            comb1.combDelayLineValue = combDelayLineLookUp[0];
+            comb2.combDelayLineValue = combDelayLineLookUp[1];
+            comb3.combDelayLineValue = combDelayLineLookUp[2];
+            comb4.combDelayLineValue = combDelayLineLookUp[3];
+            comb5.combDelayLineValue = combDelayLineLookUp[4];
+            comb6.combDelayLineValue = combDelayLineLookUp[5];
+            comb7.combDelayLineValue = combDelayLineLookUp[6];
+            comb8.combDelayLineValue = combDelayLineLookUp[7];
         }
 
         void prepareToPlay(float sampleRate, float roomSize){
-            setCombBaseLineValue();
+            setCombDelayLineValue();
             setCombBufferSize(sampleRate);
             comb1.setValue(sampleRate, roomSize);
             comb2.setValue(sampleRate, roomSize);
@@ -154,17 +177,17 @@ private:
             comb8.setValue(sampleRate, roomSize);
         }//这个在roomSize改变时调用，更新每个梳状滤波器的delaySamplesNum值
 
-        float processSample(float inputSample, float feedback){
+        float processSample(float inputSample, float decay){
             //八个梳状滤波器并行处理输入信号，输出相加
             float outputSample = 0.0f;
-            outputSample += comb1.processSample(inputSample, feedback);
-            outputSample += comb2.processSample(inputSample, feedback);
-            outputSample += comb3.processSample(inputSample, feedback);
-            outputSample += comb4.processSample(inputSample, feedback);
-            outputSample += comb5.processSample(inputSample, feedback);
-            outputSample += comb6.processSample(inputSample, feedback);
-            outputSample += comb7.processSample(inputSample, feedback);
-            outputSample += comb8.processSample(inputSample, feedback);
+            outputSample += comb1.processSample(inputSample, decay);
+            outputSample += comb2.processSample(inputSample, decay);
+            outputSample += comb3.processSample(inputSample, decay);
+            outputSample += comb4.processSample(inputSample, decay);
+            outputSample += comb5.processSample(inputSample, decay);
+            outputSample += comb6.processSample(inputSample, decay);
+            outputSample += comb7.processSample(inputSample, decay);
+            outputSample += comb8.processSample(inputSample, decay);
 
             comb1.writeIndex = getCircularBufferIndex(comb1.writeIndex + 1, combBufferSize);
             comb2.writeIndex = getCircularBufferIndex(comb2.writeIndex + 1, combBufferSize);
@@ -176,6 +199,104 @@ private:
             comb8.writeIndex = getCircularBufferIndex(comb8.writeIndex + 1, combBufferSize);
 
             return outputSample / 8.0f;//平均输出，避免增益过大
+        }
+    };
+
+    struct lowPassFilter{
+        float b1{1.0f};
+        float a0{0.0f};
+        float a1{-1.0f};
+
+        float x1{0.0f};//上一个输入样本
+        float y1{0.0f};//上一个输出样本
+
+        void prepareToPlay(float sampleRate, float dampHz){
+            a0 = std::pow(Exp, 1.0f / (dampHz *sampleRate));
+            b1 = a0 - 1.0f;
+        }
+
+        void setValue(float sampleRate, float dampHz){
+            prepareToPlay(sampleRate, dampHz);
+        }
+    };
+
+    struct allPassFilterSingle{//单个全通滤波器结构体
+        //y[n] = diffusion * x[n] + x[n - delaySamples] - diffusion * y[n - delaySamples]
+        std::vector<float> allPassDelayLineBuffer;
+
+        int writeIndex{0};
+        int delaySamplesNum{0};
+        int allPassDelayLineValue{0};//根据采样率和房间尺寸计算出的基础延迟时间对应的样本数，作为buffer大小的参考值
+
+        void setValue(float sampleRate, float roomSize){
+            delaySamplesNum = getNearestPrimeNumber(allPassDelayLineValue * sampleRate / defaultSampleRate * roomSize);
+        }
+
+        float processSample(float inputSample, float diffusion){
+            float readIndex = getCircularBufferIndex(writeIndex - delaySamplesNum, allPassDelayLineBuffer.size());
+            float readSample = getLinearInterpolator(allPassDelayLineBuffer.data(), allPassDelayLineBuffer.size(), readIndex);
+            float outputSample = diffusion * inputSample + readSample - diffusion * allPassDelayLineBuffer[writeIndex];
+            allPassDelayLineBuffer[writeIndex] = inputSample + diffusion * readSample;
+            return outputSample;
+        }
+    };
+
+    struct allPassFilterAll{
+        allPassFilterSingle allPass1;
+        allPassFilterSingle allPass2;
+        allPassFilterSingle allPass3;
+        allPassFilterSingle allPass4;
+
+        int allPassBufferSize{0};
+        int writeIndex{0};//四个滤波器共用一个写指针，确保它们的写位置始终保持一致
+
+        void setAllPassBufferSize(float sampleRate){
+            allPassBufferSize = static_cast<int>(allPassDelayLineLookUp[3] * sampleRate / defaultSampleRate * 2) + 1;
+            //乘以2是为了在房间尺寸为2时也能保证足够的延迟时间，避免出现死锁问题
+            //所有全通滤波器共用同一个缓冲区，大小根据最长的延迟时间来设置，确保在任何房间尺寸下都能正常工作
+            allPass1.allPassDelayLineBuffer.resize(allPassBufferSize, 0.0f);
+            allPass2.allPassDelayLineBuffer.resize(allPassBufferSize, 0.0f);
+            allPass3.allPassDelayLineBuffer.resize(allPassBufferSize, 0.0f);
+            allPass4.allPassDelayLineBuffer.resize(allPassBufferSize, 0.0f);
+        }
+
+        void setAllPassDelayLineValue(){
+            allPass1.allPassDelayLineValue = allPassDelayLineLookUp[0];
+            allPass2.allPassDelayLineValue = allPassDelayLineLookUp[1];
+            allPass3.allPassDelayLineValue = allPassDelayLineLookUp[2];
+            allPass4.allPassDelayLineValue = allPassDelayLineLookUp[3];
+        }
+
+        void prepareToPlay(float sampleRate, float roomSize){
+            setAllPassDelayLineValue();
+            setAllPassBufferSize(sampleRate);
+            allPass1.setValue(sampleRate, roomSize);
+            allPass2.setValue(sampleRate, roomSize);
+            allPass3.setValue(sampleRate, roomSize);
+            allPass4.setValue(sampleRate, roomSize);
+        }
+
+        void setValue(float sampleRate, float roomSize){
+            allPass1.setValue(sampleRate, roomSize);
+            allPass2.setValue(sampleRate, roomSize);
+            allPass3.setValue(sampleRate, roomSize);
+            allPass4.setValue(sampleRate, roomSize);
+        }//这个在roomSize改变时调用，更新每个全通滤波器的
+
+        float processSample(float inputSample, float diffusion){
+            //四个全通滤波器串联处理输入信号，输出为最后一个全通滤波器的输出
+            float outputSample = inputSample;
+            outputSample = allPass1.processSample(outputSample, diffusion);
+            outputSample = allPass2.processSample(outputSample, diffusion);
+            outputSample = allPass3.processSample(outputSample, diffusion);
+            outputSample = allPass4.processSample(outputSample, diffusion);
+
+            allPass1.writeIndex = getCircularBufferIndex(allPass1.writeIndex + 1, allPassBufferSize);
+            allPass2.writeIndex = getCircularBufferIndex(allPass2.writeIndex + 1, allPassBufferSize);
+            allPass3.writeIndex = getCircularBufferIndex(allPass3.writeIndex + 1, allPassBufferSize);
+            allPass4.writeIndex = getCircularBufferIndex(allPass4.writeIndex + 1, allPassBufferSize);
+
+            return outputSample;
         }
     };
 
