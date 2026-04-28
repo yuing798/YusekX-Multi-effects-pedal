@@ -1,7 +1,9 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <vector>
 #include "Utils/constants.h"
+#include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_gui_basics/juce_gui_basics.h"
 #include "Utils/mathFunc.h"
 
@@ -69,26 +71,23 @@ private:
     std::vector<float> wetTable;//湿信号增益查找表，避免每次处理都进行powf计算
 
     struct combFilterSingle{//单个梳状滤波器结构体
+        //y[n] = x[n] + feedback * y[n - delaySamples]
         std::vector<float> combDelayLineBuffer;
-        int writeIndex{0};
+    
+        int writeIndex{0};//写指针八个滤波器共用同一个
         int delaySamplesNum{0};
         int combBaseLineValue{0};//根据采样率和房间尺寸计算出的基础延迟时间对应的样本数，作为buffer大小的参考值
 
-        void prepareToPlay(float roomSize, float sampleRate){
-            delaySamplesNum = getNearestPrimeNumber(combBaseLineValue * sampleRate / defaultSampleRate * roomSize);
-            writeIndex = 0;            
-        }
+        void setValue(float sampleRate, float roomSize){
 
-        void setValue(bool isUptated, float sampleRate, float roomSize){
-            if(isUptated)
-                delaySamplesNum = getNearestPrimeNumber(combBaseLineValue * sampleRate / defaultSampleRate * roomSize);
+            delaySamplesNum = getNearestPrimeNumber(combBaseLineValue * sampleRate / defaultSampleRate * roomSize);
         }
 
         float processSample(float inputSample, float feedback){
             float readIndex = getCircularBufferIndex(writeIndex - delaySamplesNum, combDelayLineBuffer.size());
-            combDelayLineBuffer[writeIndex] = inputSample + feedback * combDelayLineBuffer[readIndex];
-            writeIndex = (writeIndex + 1) % combDelayLineBuffer.size();
-            
+            float readSample = getLinearInterpolator(combDelayLineBuffer.data(), combDelayLineBuffer.size(), readIndex);
+            combDelayLineBuffer[writeIndex] = inputSample + feedback * readSample;
+            return combDelayLineBuffer[writeIndex];
         }
     };
 
@@ -102,17 +101,22 @@ private:
         combFilterSingle comb7;
         combFilterSingle comb8;
 
+        int combBufferSize{0};
+        int writeIndex{0};//八个滤波器共用一个写指针，确保它们的写位置始终保持一致
+
         void setCombBufferSize(float sampleRate){
 
+            combBufferSize = static_cast<int>(combBaseLineLookUp[7] * sampleRate / defaultSampleRate * 2) + 1;
             //乘以2是为了在房间尺寸为2时也能保证足够的延迟时间，避免出现死锁问题
-            comb1.combDelayLineBuffer.resize(static_cast<int>(combBaseLineLookUp[0] * sampleRate / defaultSampleRate *2) + 1, 0.0f);
-            comb2.combDelayLineBuffer.resize(static_cast<int>(combBaseLineLookUp[1] * sampleRate / defaultSampleRate *2) + 1, 0.0f);
-            comb3.combDelayLineBuffer.resize(static_cast<int>(combBaseLineLookUp[2] * sampleRate / defaultSampleRate *2) + 1, 0.0f);
-            comb4.combDelayLineBuffer.resize(static_cast<int>(combBaseLineLookUp[3] * sampleRate / defaultSampleRate *2) + 1, 0.0f);
-            comb5.combDelayLineBuffer.resize(static_cast<int>(combBaseLineLookUp[4] * sampleRate / defaultSampleRate *2) + 1, 0.0f);
-            comb6.combDelayLineBuffer.resize(static_cast<int>(combBaseLineLookUp[5] * sampleRate / defaultSampleRate *2) + 1, 0.0f);
-            comb7.combDelayLineBuffer.resize(static_cast<int>(combBaseLineLookUp[6] * sampleRate / defaultSampleRate *2) + 1, 0.0f);
-            comb8.combDelayLineBuffer.resize(static_cast<int>(combBaseLineLookUp[7] * sampleRate / defaultSampleRate *2) + 1, 0.0f);
+            //所有梳状滤波器共用同一个缓冲区，大小根据最长的延迟时间来设置，确保在任何房间尺寸下都能正常工作
+            comb1.combDelayLineBuffer.resize(combBufferSize, 0.0f);
+            comb2.combDelayLineBuffer.resize(combBufferSize, 0.0f);
+            comb3.combDelayLineBuffer.resize(combBufferSize, 0.0f);
+            comb4.combDelayLineBuffer.resize(combBufferSize, 0.0f);
+            comb5.combDelayLineBuffer.resize(combBufferSize, 0.0f);
+            comb6.combDelayLineBuffer.resize(combBufferSize, 0.0f);
+            comb7.combDelayLineBuffer.resize(combBufferSize, 0.0f);
+            comb8.combDelayLineBuffer.resize(combBufferSize, 0.0f);
         }
 
         void setCombBaseLineValue(){
@@ -124,6 +128,54 @@ private:
             comb6.combBaseLineValue = combBaseLineLookUp[5];
             comb7.combBaseLineValue = combBaseLineLookUp[6];
             comb8.combBaseLineValue = combBaseLineLookUp[7];
+        }
+
+        void prepareToPlay(float sampleRate, float roomSize){
+            setCombBaseLineValue();
+            setCombBufferSize(sampleRate);
+            comb1.setValue(sampleRate, roomSize);
+            comb2.setValue(sampleRate, roomSize);
+            comb3.setValue(sampleRate, roomSize);
+            comb4.setValue(sampleRate, roomSize);
+            comb5.setValue(sampleRate, roomSize);
+            comb6.setValue(sampleRate, roomSize);
+            comb7.setValue(sampleRate, roomSize);
+            comb8.setValue(sampleRate, roomSize);
+        }
+
+        void setValue(float sampleRate, float roomSize){
+            comb1.setValue(sampleRate, roomSize);
+            comb2.setValue(sampleRate, roomSize);
+            comb3.setValue(sampleRate, roomSize);
+            comb4.setValue(sampleRate, roomSize);
+            comb5.setValue(sampleRate, roomSize);
+            comb6.setValue(sampleRate, roomSize);
+            comb7.setValue(sampleRate, roomSize);
+            comb8.setValue(sampleRate, roomSize);
+        }//这个在roomSize改变时调用，更新每个梳状滤波器的delaySamplesNum值
+
+        float processSample(float inputSample, float feedback){
+            //八个梳状滤波器并行处理输入信号，输出相加
+            float outputSample = 0.0f;
+            outputSample += comb1.processSample(inputSample, feedback);
+            outputSample += comb2.processSample(inputSample, feedback);
+            outputSample += comb3.processSample(inputSample, feedback);
+            outputSample += comb4.processSample(inputSample, feedback);
+            outputSample += comb5.processSample(inputSample, feedback);
+            outputSample += comb6.processSample(inputSample, feedback);
+            outputSample += comb7.processSample(inputSample, feedback);
+            outputSample += comb8.processSample(inputSample, feedback);
+
+            comb1.writeIndex = getCircularBufferIndex(comb1.writeIndex + 1, combBufferSize);
+            comb2.writeIndex = getCircularBufferIndex(comb2.writeIndex + 1, combBufferSize);
+            comb3.writeIndex = getCircularBufferIndex(comb3.writeIndex + 1, combBufferSize);
+            comb4.writeIndex = getCircularBufferIndex(comb4.writeIndex + 1, combBufferSize);
+            comb5.writeIndex = getCircularBufferIndex(comb5.writeIndex + 1, combBufferSize);
+            comb6.writeIndex = getCircularBufferIndex(comb6.writeIndex + 1, combBufferSize);
+            comb7.writeIndex = getCircularBufferIndex(comb7.writeIndex + 1, combBufferSize);
+            comb8.writeIndex = getCircularBufferIndex(comb8.writeIndex + 1, combBufferSize);
+
+            return outputSample / 8.0f;//平均输出，避免增益过大
         }
     };
 
