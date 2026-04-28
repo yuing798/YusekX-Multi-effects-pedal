@@ -85,13 +85,17 @@ private:
             delaySamplesNum = transformMsIntoSamples(baseDelayTimeMs, sampleRate);
         }
 
-        float processSample(){
+        float processSample(float inputSample){
             float readIndex = getCircularBufferIndex(writeIndex - delaySamplesNum, preDelayBuffer.size());
             float readSample = getLinearInterpolator(preDelayBuffer.data(), preDelayBuffer.size(), readIndex);
             writeIndex = getCircularBufferIndex(writeIndex + 1, preDelayBuffer.size());
+            preDelayBuffer[writeIndex] = inputSample;
             return readSample;
         }
     };
+
+    preDelay preDelayL;
+    preDelay preDelayR;
 
     struct combFilterSingle{//单个反馈梳状滤波器结构体
         //y[n] = x[n] + decay * y[n - delaySamples]
@@ -101,14 +105,49 @@ private:
         int delaySamplesNum{0};
         int combDelayLineValue{0};//根据采样率和房间尺寸计算出的基础延迟时间对应的样本数，作为buffer大小的参考值
 
-        void setValue(float sampleRate, float roomSize){
+        struct lowPassFilter{
+            float b1{1.0f};
+            float a0{0.0f};
+            float a1{-1.0f};
+
+            float x1{0.0f};//上一个输入样本
+            float y1{0.0f};//上一个输出样本
+
+            void prepareToPlay(float sampleRate, float dampHz){
+                a0 = std::pow(Exp, 1.0f / (dampHz *sampleRate));
+                b1 = a0 - 1.0f;
+            }
+
+            void setValue(float sampleRate, float dampHz){
+                prepareToPlay(sampleRate, dampHz);
+            }
+
+            float processSample(float inputSample){
+                float outputSample = a0 * inputSample + a1 * x1 - b1 * y1;
+                x1 = inputSample;
+                y1 = outputSample;
+                return outputSample;
+            }
+        }dampFilter;//每个梳状滤波器内置一个低通滤波器，用于模拟高频衰减
+
+        void prepareToPlay(float sampleRate, float roomSize, float dampHz){
+            delaySamplesNum = getNearestPrimeNumber(combDelayLineValue * sampleRate / defaultSampleRate * roomSize);
+            combDelayLineBuffer.resize(delaySamplesNum + 1, 0.0f);
+            writeIndex = 0;
+            dampFilter.prepareToPlay(sampleRate, dampHz);
+        }
+        
+
+        void setValue(float sampleRate, float roomSize, float dampHz){
 
             delaySamplesNum = getNearestPrimeNumber(combDelayLineValue * sampleRate / defaultSampleRate * roomSize);
+            dampFilter.setValue(sampleRate, dampHz);
         }
 
         float processSample(float inputSample, float decay){
             float readIndex = getCircularBufferIndex(writeIndex - delaySamplesNum, combDelayLineBuffer.size());
             float readSample = getLinearInterpolator(combDelayLineBuffer.data(), combDelayLineBuffer.size(), readIndex);
+            readSample = dampFilter.processSample(readSample);
             combDelayLineBuffer[writeIndex] = inputSample + decay * readSample;
             return combDelayLineBuffer[writeIndex];
         }
@@ -153,28 +192,28 @@ private:
             comb8.combDelayLineValue = combDelayLineLookUp[7];
         }
 
-        void prepareToPlay(float sampleRate, float roomSize){
+        void prepareToPlay(float sampleRate, float roomSize, float dampHz){
             setCombDelayLineValue();
             setCombBufferSize(sampleRate);
-            comb1.setValue(sampleRate, roomSize);
-            comb2.setValue(sampleRate, roomSize);
-            comb3.setValue(sampleRate, roomSize);
-            comb4.setValue(sampleRate, roomSize);
-            comb5.setValue(sampleRate, roomSize);
-            comb6.setValue(sampleRate, roomSize);
-            comb7.setValue(sampleRate, roomSize);
-            comb8.setValue(sampleRate, roomSize);
+            comb1.setValue(sampleRate, roomSize, dampHz);
+            comb2.setValue(sampleRate, roomSize, dampHz);
+            comb3.setValue(sampleRate, roomSize, dampHz);
+            comb4.setValue(sampleRate, roomSize, dampHz);
+            comb5.setValue(sampleRate, roomSize, dampHz);
+            comb6.setValue(sampleRate, roomSize, dampHz);
+            comb7.setValue(sampleRate, roomSize, dampHz);
+            comb8.setValue(sampleRate, roomSize, dampHz);
         }
 
-        void setValue(float sampleRate, float roomSize){
-            comb1.setValue(sampleRate, roomSize);
-            comb2.setValue(sampleRate, roomSize);
-            comb3.setValue(sampleRate, roomSize);
-            comb4.setValue(sampleRate, roomSize);
-            comb5.setValue(sampleRate, roomSize);
-            comb6.setValue(sampleRate, roomSize);
-            comb7.setValue(sampleRate, roomSize);
-            comb8.setValue(sampleRate, roomSize);
+        void setValue(float sampleRate, float roomSize, float dampHz){
+            comb1.setValue(sampleRate, roomSize, dampHz);
+            comb2.setValue(sampleRate, roomSize, dampHz);
+            comb3.setValue(sampleRate, roomSize, dampHz);
+            comb4.setValue(sampleRate, roomSize, dampHz);
+            comb5.setValue(sampleRate, roomSize, dampHz);
+            comb6.setValue(sampleRate, roomSize, dampHz);
+            comb7.setValue(sampleRate, roomSize, dampHz);
+            comb8.setValue(sampleRate, roomSize, dampHz);
         }//这个在roomSize改变时调用，更新每个梳状滤波器的delaySamplesNum值
 
         float processSample(float inputSample, float decay){
@@ -202,23 +241,10 @@ private:
         }
     };
 
-    struct lowPassFilter{
-        float b1{1.0f};
-        float a0{0.0f};
-        float a1{-1.0f};
+    combFilterAll combFiltersL;
+    combFilterAll combFiltersR;
 
-        float x1{0.0f};//上一个输入样本
-        float y1{0.0f};//上一个输出样本
 
-        void prepareToPlay(float sampleRate, float dampHz){
-            a0 = std::pow(Exp, 1.0f / (dampHz *sampleRate));
-            b1 = a0 - 1.0f;
-        }
-
-        void setValue(float sampleRate, float dampHz){
-            prepareToPlay(sampleRate, dampHz);
-        }
-    };
 
     struct allPassFilterSingle{//单个全通滤波器结构体
         //y[n] = diffusion * x[n] + x[n - delaySamples] - diffusion * y[n - delaySamples]
@@ -299,6 +325,9 @@ private:
             return outputSample;
         }
     };
+
+    allPassFilterAll allPassFiltersL;
+    allPassFilterAll allPassFiltersR;
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedDecayLevel { 1.0f };

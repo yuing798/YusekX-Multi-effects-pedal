@@ -1,10 +1,12 @@
 #pragma once
 //该文件定义插件的用户界面类，包含了插件的外观和交互功能实现
 #include "PluginProcessor.h"
+#include "juce_gui_basics/juce_gui_basics.h"
 #include "plugins/Booster/base_overdrive.h"
 #include "plugins/Delay/base_delay.h"
 #include "plugins/EQ/eq.h"
 #include "plugins/MOD/multiChannelsChorus.h"
+#include "plugins/Reverb/SchroederReverb.h"
 #include "plugins/Tremolo/base_tremolo.h"
 #include "plugins/dynamics/base_compressor.h"
 #include "plugins/plugins.h"
@@ -32,13 +34,20 @@ private:
 
     juce::TextButton testButton { "midi test on" };
 
-    // BaseDelayEditor mBaseDelayEditor;
-    // BaseTremoloEditor mBaseTremoloEditor;
-    // SineSurroundEditor mSineSurroundEditor;
-    // YOK3508Editor mYOK3508Editor;
-    // baseOverdriveEditor mBaseOverdriveEditor;
-    // baseEQEditor mBaseEQEditor;
+    juce::ComboBox effectSelector;
+
+
+
+    BaseDelayEditor mBaseDelayEditor;
+    BaseTremoloEditor mBaseTremoloEditor;
+    SineSurroundEditor mSineSurroundEditor;
+    YOK3508Editor mYOK3508Editor;
+    baseOverdriveEditor mBaseOverdriveEditor;
+    baseEQEditor mBaseEQEditor;
     BaseCompressorEditor mBaseCompressorEditor;
+    SchroederReverbEditor mSchroederReverbEditor;
+
+    void updateEffectEditor();
     
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessorEditor)

@@ -207,6 +207,15 @@ void SchroederReverbProcessor::prepareToPlay(double sampleRate, int maximumBlock
     dryLookUpTable(dryTable, currentMaximumBlockSize);
     wetLookUpTable(wetTable, currentMaximumBlockSize);
 
+    preDelayL.prepareToPlay(sampleRate);
+    preDelayR.prepareToPlay(sampleRate);
+
+    combFiltersL.prepareToPlay(sampleRate, roomSize, dampHz);
+    combFiltersR.prepareToPlay(sampleRate, roomSize, dampHz);
+
+    allPassFiltersL.prepareToPlay(sampleRate, roomSize);
+    allPassFiltersR.prepareToPlay(sampleRate, roomSize);
+
     makeUpGain = std::pow(10.0f, makeUpGainDB / 20.0f);
 }
 
@@ -268,7 +277,12 @@ void SchroederReverbProcessor::processBlock(
 
         float currentDry = dryTable[static_cast<int>(currentMixLevel * (dryTable.size() - 1))];
         float currentWet = wetTable[static_cast<int>(currentMixLevel * (wetTable.size() - 1))];
-        float currentBaseDelaySamples = transformMsIntoSamples(currentBaseDelayTimeMs, currentSampleRate);
+
+        if(mSmoothedBaseDelayTimeMs.isSmoothing()){
+            preDelayL.setValue(currentSampleRate, currentBaseDelayTimeMs);
+            preDelayR.setValue(currentSampleRate, currentBaseDelayTimeMs);
+        }   
+        
 
         if (mSmoothedMakeUpGainDB.isSmoothing())
             makeUpGain = std::pow(10.0f,currentMakeUpGainDB / 20.0f);
@@ -277,9 +291,17 @@ void SchroederReverbProcessor::processBlock(
         float inputSampleLeft = channelDataLeft[sampleIndex];
         //对左声道进行处理，处理完后写回channelDataLeft[sampleIndex]
 
+        inputSampleLeft = preDelayL.processSample(inputSampleLeft);
+
+        channelDataLeft[sampleIndex] = inputSampleLeft;
+
         if(numChannels > 1){
             float inputSampleRight = channelDataRight[sampleIndex];
             //对右声道进行处理，处理完后写回channelDataRight[sampleIndex]
+
+            inputSampleRight = preDelayR.processSample(inputSampleRight);
+
+            channelDataRight[sampleIndex] = inputSampleRight;
         }
     }
 }

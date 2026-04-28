@@ -11,6 +11,7 @@
 #include "plugins/Delay/sine_surround.h"
 #include "plugins/EQ/eq.h"
 #include "plugins/MOD/multiChannelsChorus.h"
+#include "plugins/Reverb/SchroederReverb.h"
 #include "plugins/Tremolo/base_tremolo.h"
 #include "plugins/plugins.h"
 
@@ -98,13 +99,14 @@ private:
 
     }table;//把查询表都放在主函数初始化
 
-    // BaseDelayProcessor mBaseDelayProcessor;
-    // BaseTremoloProcessor mBaseTremoloProcessor;
-    // SineSurroundProcessor mSineSurroundProcessor;
-    // YOK3508Processor mYOK3508Processor;
-    // baseOverdriveProcessor  mBaseOverdriveProcessor;
-    // baseEQProcessor mBaseEQProcessor;
+    BaseDelayProcessor mBaseDelayProcessor;
+    BaseTremoloProcessor mBaseTremoloProcessor;
+    SineSurroundProcessor mSineSurroundProcessor;
+    YOK3508Processor mYOK3508Processor;
+    baseOverdriveProcessor  mBaseOverdriveProcessor;
+    baseEQProcessor mBaseEQProcessor;
     BaseCompressorProcessor mBaseCompressorProcessor;
+    SchroederReverbProcessor mSchroederReverbProcessor;
 
     float processTime{ 0.0f };
     int processCount{ 0 };
