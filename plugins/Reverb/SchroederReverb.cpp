@@ -32,9 +32,9 @@ SchroederReverbEditor::SchroederReverbEditor(juce::AudioProcessorValueTreeState&
     mixLevelLabel.setText("Mix Level", juce::dontSendNotification);
     addAndMakeVisible(mixLevelSlider);
 
-    addAndMakeVisible(dampHzLabel);
-    dampHzLabel.setText("Damp Hz", juce::dontSendNotification);
-    addAndMakeVisible(dampHzSlider);
+    addAndMakeVisible(dampLevelLabel);
+    dampLevelLabel.setText("Damp Level", juce::dontSendNotification);
+    addAndMakeVisible(dampLevelSlider);
 
     addAndMakeVisible(roomSizeLabel);
     roomSizeLabel.setText("Room Size", juce::dontSendNotification);
@@ -76,10 +76,10 @@ void SchroederReverbProcessor::createParameterLayout(
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f),
         0.5f));
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID { SchroederReverbDampHzId, 1 },
-        "Schroeder Reverb Damp Hz",
-        juce::NormalisableRange<float>(20.0f, 20000.0f, 1.0f),
-        2000.0f));
+        juce::ParameterID { SchroederReverbDampLevelId, 1 },
+        "Schroeder Reverb Damp Level",
+        juce::NormalisableRange<float>(0.0f, 0.95f, 0.01f),
+        0.5f));
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID { SchroederReverbRoomSizeId, 1 },
         "Schroeder Reverb Room Size",
@@ -117,10 +117,10 @@ void SchroederReverbEditor::bindParameters()
         mAPVTS,
         SchroederReverbMixLevelId,
         mixLevelSlider);
-    dampHzAttachment = std::make_unique<SliderAttachment>(
+    dampLevelAttachment = std::make_unique<SliderAttachment>(
         mAPVTS,
-        SchroederReverbDampHzId,
-        dampHzSlider);
+        SchroederReverbDampLevelId,
+        dampLevelSlider);
     roomSizeAttachment = std::make_unique<SliderAttachment>(
         mAPVTS,
         SchroederReverbRoomSizeId,
@@ -151,8 +151,8 @@ void SchroederReverbEditor::resized()
     diffusionLevelSlider.setBounds(220, 50, 150, 30);
     mixLevelLabel.setBounds(110, 90, 100, 30);
     mixLevelSlider.setBounds(220, 90, 150, 30);
-    dampHzLabel.setBounds(110, 130, 100, 30);
-    dampHzSlider.setBounds(220, 130, 150, 30);
+    dampLevelLabel.setBounds(110, 130, 100, 30);
+    dampLevelSlider.setBounds(220, 130, 150, 30);
     roomSizeLabel.setBounds(110, 170, 100, 30);
     roomSizeSlider.setBounds(220, 170, 150, 30);
     baseDelayTimeMsLabel.setBounds(110, 210, 100, 30);
@@ -175,8 +175,8 @@ void SchroederReverbProcessor::syncParametersFromAPVTS()
         diffusionLevel = diffusionLevelParameter->load();
     if(auto* mixLevelParameter = mAPVTS.getRawParameterValue(SchroederReverbMixLevelId))
         mixLevel = mixLevelParameter->load();
-    if(auto* dampHzParameter = mAPVTS.getRawParameterValue(SchroederReverbDampHzId))
-        dampHz = dampHzParameter->load();
+    if(auto* dampLevelParameter = mAPVTS.getRawParameterValue(SchroederReverbDampLevelId))
+        dampLevel = dampLevelParameter->load();
     if(auto* roomSizeParameter = mAPVTS.getRawParameterValue(SchroederReverbRoomSizeId))
         roomSize = roomSizeParameter->load();
     if(auto* baseDelayTimeMsParameter = mAPVTS.getRawParameterValue(SchroederReverbBaseDelayTimeMsId))
@@ -188,7 +188,7 @@ void SchroederReverbProcessor::syncParametersFromAPVTS()
 //初始化
 void SchroederReverbProcessor::prepareToPlay(double sampleRate, int maximumBlockSize, int numChannels)
 {
-    currentSampleRate = sampleRate;
+    currentSampleRate = static_cast<float>(sampleRate);
     currentMaximumBlockSize = maximumBlockSize;
 
 
@@ -199,7 +199,7 @@ void SchroederReverbProcessor::prepareToPlay(double sampleRate, int maximumBlock
     mSmoothedDecayLevel.reset(sampleRate, 0.02);
     mSmoothedDiffusionLevel.reset(sampleRate, 0.02);
     mSmoothedMixLevel.reset(sampleRate, 0.02);
-    mSmoothedDampHz.reset(sampleRate, 0.02);
+    mSmoothedDampLevel.reset(sampleRate, 0.02);
     mSmoothedRoomSize.reset(sampleRate, 0.02);
     mSmoothedBaseDelayTimeMs.reset(sampleRate, 0.02);
     mSmoothedMakeUpGainDB.reset(sampleRate, 0.02);
@@ -207,14 +207,14 @@ void SchroederReverbProcessor::prepareToPlay(double sampleRate, int maximumBlock
     dryLookUpTable(dryTable, currentMaximumBlockSize);
     wetLookUpTable(wetTable, currentMaximumBlockSize);
 
-    preDelayL.prepareToPlay(sampleRate);
-    preDelayR.prepareToPlay(sampleRate);
+    preDelayL.prepareToPlay(currentSampleRate);
+    preDelayR.prepareToPlay(currentSampleRate);
 
-    combFiltersL.prepareToPlay(sampleRate, roomSize, dampHz);
-    combFiltersR.prepareToPlay(sampleRate, roomSize, dampHz);
+    combFiltersL.prepareToPlay(currentSampleRate, roomSize, dampLevel);
+    combFiltersR.prepareToPlay(currentSampleRate, roomSize, dampLevel);
 
-    allPassFiltersL.prepareToPlay(sampleRate, roomSize);
-    allPassFiltersR.prepareToPlay(sampleRate, roomSize);
+    allPassFiltersL.prepareToPlay(currentSampleRate, roomSize);
+    allPassFiltersR.prepareToPlay(currentSampleRate, roomSize);
 
     makeUpGain = std::pow(10.0f, makeUpGainDB / 20.0f);
 }
@@ -225,7 +225,7 @@ void SchroederReverbProcessor::updateProcessorParameters()
     mSmoothedDecayLevel.setTargetValue(decayLevel);
     mSmoothedDiffusionLevel.setTargetValue(diffusionLevel);
     mSmoothedMixLevel.setTargetValue(mixLevel);
-    mSmoothedDampHz.setTargetValue(dampHz);
+    mSmoothedDampLevel.setTargetValue(dampLevel);
     mSmoothedRoomSize.setTargetValue(roomSize);
     mSmoothedBaseDelayTimeMs.setTargetValue(baseDelayTimeMs);
     mSmoothedMakeUpGainDB.setTargetValue(makeUpGainDB);
@@ -270,7 +270,7 @@ void SchroederReverbProcessor::processBlock(
         float currentDecayLevel = mSmoothedDecayLevel.getNextValue();
         float currentDiffusionLevel = mSmoothedDiffusionLevel.getNextValue();
         float currentMixLevel = mSmoothedMixLevel.getNextValue();
-        float currentDampHz = mSmoothedDampHz.getNextValue();
+        float currentDampLevel = mSmoothedDampLevel.getNextValue();
         float currentRoomSize = mSmoothedRoomSize.getNextValue();
         float currentBaseDelayTimeMs = mSmoothedBaseDelayTimeMs.getNextValue();
         float currentMakeUpGainDB = mSmoothedMakeUpGainDB.getNextValue();
@@ -282,26 +282,37 @@ void SchroederReverbProcessor::processBlock(
             preDelayL.setValue(currentSampleRate, currentBaseDelayTimeMs);
             preDelayR.setValue(currentSampleRate, currentBaseDelayTimeMs);
         }   
-        
-
+        if(mSmoothedDecayLevel.isSmoothing() || mSmoothedDampLevel.isSmoothing() || mSmoothedRoomSize.isSmoothing()){
+            combFiltersL.setValue(currentSampleRate, currentRoomSize, currentDampLevel);
+            combFiltersR.setValue(currentSampleRate, currentRoomSize, currentDampLevel);
+        }
+        if(mSmoothedDiffusionLevel.isSmoothing() || mSmoothedRoomSize.isSmoothing()){
+            allPassFiltersL.setValue(currentSampleRate, currentRoomSize);
+            allPassFiltersR.setValue(currentSampleRate, currentRoomSize);
+        }
         if (mSmoothedMakeUpGainDB.isSmoothing())
             makeUpGain = std::pow(10.0f,currentMakeUpGainDB / 20.0f);
 
 
         float inputSampleLeft = channelDataLeft[sampleIndex];
-        //对左声道进行处理，处理完后写回channelDataLeft[sampleIndex]
+        
+        float drySampleLeft = inputSampleLeft;
 
         inputSampleLeft = preDelayL.processSample(inputSampleLeft);
+        inputSampleLeft = combFiltersL.processSample(inputSampleLeft, currentDecayLevel);
+        inputSampleLeft = allPassFiltersL.processSample(inputSampleLeft, currentDiffusionLevel);
 
-        channelDataLeft[sampleIndex] = inputSampleLeft;
+        channelDataLeft[sampleIndex] = (inputSampleLeft * currentWet + drySampleLeft * currentDry) * makeUpGain;
 
         if(numChannels > 1){
             float inputSampleRight = channelDataRight[sampleIndex];
-            //对右声道进行处理，处理完后写回channelDataRight[sampleIndex]
+            float drySampleRight = inputSampleRight;
 
             inputSampleRight = preDelayR.processSample(inputSampleRight);
+            inputSampleRight = combFiltersR.processSample(inputSampleRight, currentDecayLevel);
+            inputSampleRight = allPassFiltersR.processSample(inputSampleRight, currentDiffusionLevel);
 
-            channelDataRight[sampleIndex] = inputSampleRight;
+            channelDataRight[sampleIndex] = (inputSampleRight * currentWet + drySampleRight * currentDry) * makeUpGain;
         }
     }
 }

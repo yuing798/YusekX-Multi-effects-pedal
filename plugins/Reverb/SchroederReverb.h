@@ -18,7 +18,7 @@ private:
 	juce::Slider decayLevelSlider;//反馈梳状滤波器反馈度
     juce::Slider diffusionLevelSlider;//扩散全通滤波器的扩散度
     juce::Slider mixLevelSlider;//干湿混合度
-    juce::Slider dampHzSlider;//低通滤波器的截止频率
+    juce::Slider dampLevelSlider;//低通滤波器的截止频率
     juce::Slider roomSizeSlider;//房间尺寸，影响延迟时间
     juce::Slider baseDelayTimeMsSlider;//基础延迟时间，影响初始反射的时间
     juce::Slider makeUpGainSlider;//补偿增益
@@ -26,7 +26,7 @@ private:
 	juce::Label decayLevelLabel;
     juce::Label diffusionLevelLabel;
     juce::Label mixLevelLabel;
-    juce::Label dampHzLabel;
+    juce::Label dampLevelLabel;
     juce::Label roomSizeLabel;
     juce::Label baseDelayTimeMsLabel;
     juce::Label makeUpGainLabel;
@@ -35,7 +35,7 @@ private:
     std::unique_ptr<SliderAttachment> decayLevelAttachment;
     std::unique_ptr<SliderAttachment> diffusionLevelAttachment;
     std::unique_ptr<SliderAttachment> mixLevelAttachment;
-    std::unique_ptr<SliderAttachment> dampHzAttachment;
+    std::unique_ptr<SliderAttachment> dampLevelAttachment;
     std::unique_ptr<SliderAttachment> roomSizeAttachment;
     std::unique_ptr<SliderAttachment> baseDelayTimeMsAttachment;
     std::unique_ptr<SliderAttachment> makeUpGainAttachment;
@@ -61,7 +61,7 @@ private:
     float decayLevel { 0.5f };//反馈梳状滤波器反馈度
     float diffusionLevel { 0.5f };//扩散全通滤波器的扩散度
     float mixLevel { 0.5f };//干湿混合度
-    float dampHz { 2000.0f };//低通滤波器的截止频率
+    float dampLevel { 0.5f };//低通滤波器系数
     float roomSize { 0.5f };//房间尺寸，影响延迟时间
     float baseDelayTimeMs { 50.0f };//基础延迟时间，单位为毫秒
     float makeUpGainDB { 0.0f };//补偿增益
@@ -87,7 +87,7 @@ private:
 
         float processSample(float inputSample){
             float readIndex = getCircularBufferIndex(writeIndex - delaySamplesNum, preDelayBuffer.size());
-            float readSample = getLinearInterpolator(preDelayBuffer.data(), preDelayBuffer.size(), readIndex);
+            float readSample = getLinearInterpolator(preDelayBuffer.data(), static_cast<int>(preDelayBuffer.size()), readIndex);
             writeIndex = getCircularBufferIndex(writeIndex + 1, preDelayBuffer.size());
             preDelayBuffer[writeIndex] = inputSample;
             return readSample;
@@ -102,51 +102,47 @@ private:
         std::vector<float> combDelayLineBuffer;
     
         int writeIndex{0};//写指针八个滤波器共用同一个
-        int delaySamplesNum{0};
+        float delaySamplesNum{0.0f};
         int combDelayLineValue{0};//根据采样率和房间尺寸计算出的基础延迟时间对应的样本数，作为buffer大小的参考值
 
         struct lowPassFilter{
-            float b1{1.0f};
-            float a0{0.0f};
-            float a1{-1.0f};
+            float b0{1.0f};
+            float a1{0.0f};
 
-            float x1{0.0f};//上一个输入样本
             float y1{0.0f};//上一个输出样本
 
-            void prepareToPlay(float sampleRate, float dampHz){
-                a0 = std::pow(Exp, 1.0f / (dampHz *sampleRate));
-                b1 = a0 - 1.0f;
+            void prepareToPlay(float dampLevel){
+                a1 = -dampLevel;
+                b0 = 1.0f - dampLevel;
             }
 
-            void setValue(float sampleRate, float dampHz){
-                prepareToPlay(sampleRate, dampHz);
+            void setValue(float dampLevel){
+                prepareToPlay(dampLevel);
             }
 
             float processSample(float inputSample){
-                float outputSample = a0 * inputSample + a1 * x1 - b1 * y1;
-                x1 = inputSample;
+                float outputSample = b0 * inputSample - a1 * y1;
                 y1 = outputSample;
                 return outputSample;
             }
         }dampFilter;//每个梳状滤波器内置一个低通滤波器，用于模拟高频衰减
 
-        void prepareToPlay(float sampleRate, float roomSize, float dampHz){
+        void prepareToPlay(float sampleRate, float roomSize, float dampLevel){
             delaySamplesNum = getNearestPrimeNumber(combDelayLineValue * sampleRate / defaultSampleRate * roomSize);
-            combDelayLineBuffer.resize(delaySamplesNum + 1, 0.0f);
             writeIndex = 0;
-            dampFilter.prepareToPlay(sampleRate, dampHz);
+            dampFilter.prepareToPlay(dampLevel);
         }
         
 
-        void setValue(float sampleRate, float roomSize, float dampHz){
+        void setValue(float sampleRate, float roomSize, float dampLevel){
 
             delaySamplesNum = getNearestPrimeNumber(combDelayLineValue * sampleRate / defaultSampleRate * roomSize);
-            dampFilter.setValue(sampleRate, dampHz);
+            dampFilter.setValue(dampLevel);
         }
 
         float processSample(float inputSample, float decay){
             float readIndex = getCircularBufferIndex(writeIndex - delaySamplesNum, combDelayLineBuffer.size());
-            float readSample = getLinearInterpolator(combDelayLineBuffer.data(), combDelayLineBuffer.size(), readIndex);
+            float readSample = getLinearInterpolator(combDelayLineBuffer.data(), static_cast<int>(combDelayLineBuffer.size()), readIndex);
             readSample = dampFilter.processSample(readSample);
             combDelayLineBuffer[writeIndex] = inputSample + decay * readSample;
             return combDelayLineBuffer[writeIndex];
@@ -164,11 +160,10 @@ private:
         combFilterSingle comb8;
 
         int combBufferSize{0};
-        int writeIndex{0};//八个滤波器共用一个写指针，确保它们的写位置始终保持一致
 
         void setCombBufferSize(float sampleRate){
 
-            combBufferSize = static_cast<int>(combDelayLineLookUp[7] * sampleRate / defaultSampleRate * 2) + 1;
+            combBufferSize = static_cast<int>(combDelayLineLookUp[7] * sampleRate / defaultSampleRate * 2.1) + 1;
             //乘以2是为了在房间尺寸为2时也能保证足够的延迟时间，避免出现死锁问题
             //所有梳状滤波器共用同一个缓冲区，大小根据最长的延迟时间来设置，确保在任何房间尺寸下都能正常工作
             comb1.combDelayLineBuffer.resize(combBufferSize, 0.0f);
@@ -195,25 +190,25 @@ private:
         void prepareToPlay(float sampleRate, float roomSize, float dampHz){
             setCombDelayLineValue();
             setCombBufferSize(sampleRate);
-            comb1.setValue(sampleRate, roomSize, dampHz);
-            comb2.setValue(sampleRate, roomSize, dampHz);
-            comb3.setValue(sampleRate, roomSize, dampHz);
-            comb4.setValue(sampleRate, roomSize, dampHz);
-            comb5.setValue(sampleRate, roomSize, dampHz);
-            comb6.setValue(sampleRate, roomSize, dampHz);
-            comb7.setValue(sampleRate, roomSize, dampHz);
-            comb8.setValue(sampleRate, roomSize, dampHz);
+            comb1.prepareToPlay(sampleRate, roomSize, dampHz);
+            comb2.prepareToPlay(sampleRate, roomSize, dampHz);
+            comb3.prepareToPlay(sampleRate, roomSize, dampHz);
+            comb4.prepareToPlay(sampleRate, roomSize, dampHz);
+            comb5.prepareToPlay(sampleRate, roomSize, dampHz);
+            comb6.prepareToPlay(sampleRate, roomSize, dampHz);
+            comb7.prepareToPlay(sampleRate, roomSize, dampHz);
+            comb8.prepareToPlay(sampleRate, roomSize, dampHz);
         }
 
-        void setValue(float sampleRate, float roomSize, float dampHz){
-            comb1.setValue(sampleRate, roomSize, dampHz);
-            comb2.setValue(sampleRate, roomSize, dampHz);
-            comb3.setValue(sampleRate, roomSize, dampHz);
-            comb4.setValue(sampleRate, roomSize, dampHz);
-            comb5.setValue(sampleRate, roomSize, dampHz);
-            comb6.setValue(sampleRate, roomSize, dampHz);
-            comb7.setValue(sampleRate, roomSize, dampHz);
-            comb8.setValue(sampleRate, roomSize, dampHz);
+        void setValue(float sampleRate, float roomSize, float dampLevel){
+            comb1.setValue(sampleRate, roomSize, dampLevel);
+            comb2.setValue(sampleRate, roomSize, dampLevel);
+            comb3.setValue(sampleRate, roomSize, dampLevel);
+            comb4.setValue(sampleRate, roomSize, dampLevel);
+            comb5.setValue(sampleRate, roomSize, dampLevel);
+            comb6.setValue(sampleRate, roomSize, dampLevel);
+            comb7.setValue(sampleRate, roomSize, dampLevel);
+            comb8.setValue(sampleRate, roomSize, dampLevel);
         }//这个在roomSize改变时调用，更新每个梳状滤波器的delaySamplesNum值
 
         float processSample(float inputSample, float decay){
@@ -254,14 +249,19 @@ private:
         int delaySamplesNum{0};
         int allPassDelayLineValue{0};//根据采样率和房间尺寸计算出的基础延迟时间对应的样本数，作为buffer大小的参考值
 
+        void prepareToPlay(float sampleRate, float roomSize){
+            delaySamplesNum = getNearestPrimeNumber(allPassDelayLineValue * sampleRate / defaultSampleRate * roomSize);
+            writeIndex = 0;
+        }
+
         void setValue(float sampleRate, float roomSize){
             delaySamplesNum = getNearestPrimeNumber(allPassDelayLineValue * sampleRate / defaultSampleRate * roomSize);
         }
 
         float processSample(float inputSample, float diffusion){
-            float readIndex = getCircularBufferIndex(writeIndex - delaySamplesNum, allPassDelayLineBuffer.size());
-            float readSample = getLinearInterpolator(allPassDelayLineBuffer.data(), allPassDelayLineBuffer.size(), readIndex);
-            float outputSample = diffusion * inputSample + readSample - diffusion * allPassDelayLineBuffer[writeIndex];
+            int readIndex = getCircularBufferIndex(writeIndex - delaySamplesNum, static_cast<int>(allPassDelayLineBuffer.size()));
+            float readSample = allPassDelayLineBuffer[readIndex];
+            float outputSample = - diffusion * inputSample + readSample ;
             allPassDelayLineBuffer[writeIndex] = inputSample + diffusion * readSample;
             return outputSample;
         }
@@ -277,7 +277,7 @@ private:
         int writeIndex{0};//四个滤波器共用一个写指针，确保它们的写位置始终保持一致
 
         void setAllPassBufferSize(float sampleRate){
-            allPassBufferSize = static_cast<int>(allPassDelayLineLookUp[3] * sampleRate / defaultSampleRate * 2) + 1;
+            allPassBufferSize = static_cast<int>(allPassDelayLineLookUp[3] * sampleRate / defaultSampleRate * 2.1) + 1;
             //乘以2是为了在房间尺寸为2时也能保证足够的延迟时间，避免出现死锁问题
             //所有全通滤波器共用同一个缓冲区，大小根据最长的延迟时间来设置，确保在任何房间尺寸下都能正常工作
             allPass1.allPassDelayLineBuffer.resize(allPassBufferSize, 0.0f);
@@ -296,10 +296,10 @@ private:
         void prepareToPlay(float sampleRate, float roomSize){
             setAllPassDelayLineValue();
             setAllPassBufferSize(sampleRate);
-            allPass1.setValue(sampleRate, roomSize);
-            allPass2.setValue(sampleRate, roomSize);
-            allPass3.setValue(sampleRate, roomSize);
-            allPass4.setValue(sampleRate, roomSize);
+            allPass1.prepareToPlay(sampleRate, roomSize);
+            allPass2.prepareToPlay(sampleRate, roomSize);
+            allPass3.prepareToPlay(sampleRate, roomSize);
+            allPass4.prepareToPlay(sampleRate, roomSize);
         }
 
         void setValue(float sampleRate, float roomSize){
@@ -336,7 +336,7 @@ private:
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedMixLevel { 1.0f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
-        mSmoothedDampHz { 1.0f };
+        mSmoothedDampLevel { 1.0f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedRoomSize { 1.0f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
