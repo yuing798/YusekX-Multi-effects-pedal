@@ -1,7 +1,6 @@
 #pragma once
 //这里定义所有的查表类函数
 
-#include <utility>
 #include <vector>
 void SineLookUpTable(std::vector<float>& sineTable, int tableSize);
 

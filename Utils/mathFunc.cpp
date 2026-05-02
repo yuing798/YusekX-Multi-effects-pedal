@@ -9,6 +9,24 @@ float getLinearInterpolator(const float* data,int size, float index){
     return (1.0f - fraction) * data[index1] + fraction * data[index2];
 }
 
+std::vector<float> convolve(const std::vector<float>& input, const std::vector<float>& kernel){
+    int inputSize = static_cast<int>(input.size());
+    int kernelSize = static_cast<int>(kernel.size());
+    int outputSize = inputSize + kernelSize - 1;
+
+    std::vector<float> output(outputSize, 0.0f);
+
+    for (int i = 0; i < outputSize; ++i) {
+        for (int j = 0; j < kernelSize; ++j) {
+            if (i - j >= 0 && i - j < inputSize) {
+                output[i] += input[i - j] * kernel[j];
+            }
+        }
+    }
+
+    return output;
+}
+
 //将弧度转化为正弦索引步长
 float transformRadIntoIndexStep(float rad, int tableSize)
 {
@@ -51,14 +69,12 @@ int getNearestPrimeNumber(float num){
         }
         if(isPrime) return i;
     }
-    for(int i = value; i > 2; i--){
-        bool isPrime = true;
-        for(int j = 2; j <= std::sqrt(i); j++){
-            if(i % j == 0){
-                isPrime = false;
-                break;
-            }
-        }
-        if(isPrime) return i;
-    }//左边和右边都查找一遍
+}
+
+float sinc(float x){
+    if (x == 0.0f) {
+        return 1.0f; // sinc(0) 的极限值为 1
+    } else {
+        return std::sin(pi * x) / (pi * x);
+    }
 }

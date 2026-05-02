@@ -33,13 +33,17 @@ baseOverdriveEditor::baseOverdriveEditor(juce::AudioProcessorValueTreeState& apv
     mOutputLevelLabel.setText("Output Level", juce::dontSendNotification);
     addAndMakeVisible(mOutputLevelSlider);
 
-    addAndMakeVisible(mMixLabel);
-    mMixLabel.setText("Mix", juce::dontSendNotification);
-    addAndMakeVisible(mMixSlider);
-
     addAndMakeVisible(mToneLabel);
     mToneLabel.setText("Tone", juce::dontSendNotification);
     addAndMakeVisible(mToneSlider);
+
+    addAndMakeVisible(mWetLabel);
+    mWetLabel.setText("Wet", juce::dontSendNotification);
+    addAndMakeVisible(wetSlider);
+
+    addAndMakeVisible(mDryLabel);
+    mDryLabel.setText("Dry", juce::dontSendNotification);
+    addAndMakeVisible(drySlider);
 
     bindParameters();
 }
@@ -55,8 +59,11 @@ void baseOverdriveEditor::bindParameters()
     mOutputLevelAttachment = std::make_unique<SliderAttachment>(
         mAPVTS, BaseOverdriveOutputLevelId, mOutputLevelSlider);
 
-    mMixAttachment = std::make_unique<SliderAttachment>(
-        mAPVTS, BaseOverdriveMixId, mMixSlider);
+    mWetAttachment = std::make_unique<SliderAttachment>(
+        mAPVTS, BaseOverdriveWetId, wetSlider);
+
+    mDryAttachment = std::make_unique<SliderAttachment>(
+        mAPVTS, BaseOverdriveDryId, drySlider);
 
     mToneAttachment = std::make_unique<SliderAttachment>(
         mAPVTS, BaseOverdriveToneId, mToneSlider);
@@ -81,8 +88,14 @@ void baseOverdriveProcessor::createParameterLayout(std::vector<std::unique_ptr<j
         0.5f));
 
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
-        BaseOverdriveMixId,
-        "base Overdrive Mix",
+        BaseOverdriveWetId,
+        "base Overdrive Wet",
+        juce::NormalisableRange<float>(0.0f, 1.0f),
+        0.5f));
+
+    parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
+        BaseOverdriveDryId,
+        "base Overdrive Dry",
         juce::NormalisableRange<float>(0.0f, 1.0f),
         0.5f));
 
@@ -101,8 +114,10 @@ void baseOverdriveProcessor::syncParametersFromAPVTS()
         mDrive = driveParameter->load();
     if (auto* outputLevelParameter = mAPVTS.getRawParameterValue(BaseOverdriveOutputLevelId))
         mOutputLevel = outputLevelParameter->load();
-    if (auto* mixParameter = mAPVTS.getRawParameterValue(BaseOverdriveMixId))
-        mMix = mixParameter->load();
+    if (auto* wetParameter = mAPVTS.getRawParameterValue(BaseOverdriveWetId))
+        mWet = wetParameter->load();
+    if (auto* dryParameter = mAPVTS.getRawParameterValue(BaseOverdriveDryId))
+        mDry = dryParameter->load();
     if (auto* toneParameter = mAPVTS.getRawParameterValue(BaseOverdriveToneId))
         mTone = toneParameter->load();
 }
@@ -118,11 +133,14 @@ void baseOverdriveEditor::resized()
     mOutputLevelLabel.setBounds(10, 130, 100, 30);
     mOutputLevelSlider.setBounds(120, 130, 150, 30);
 
-    mMixLabel.setBounds(10, 170, 100, 30);
-    mMixSlider.setBounds(120, 170, 150, 30);
+    mWetLabel.setBounds(10, 170, 100, 30);
+    wetSlider.setBounds(120, 170, 150, 30);
 
-    mToneLabel.setBounds(10, 210, 100, 30);
-    mToneSlider.setBounds(120, 210, 150, 30);
+    mDryLabel.setBounds(10, 210, 100, 30);
+    drySlider.setBounds(120, 210, 150, 30);
+
+    mToneLabel.setBounds(10, 250, 100, 30);
+    mToneSlider.setBounds(120, 250, 150, 30);
 }
 
 void baseOverdriveProcessor::prepareToPlay(
@@ -141,7 +159,8 @@ void baseOverdriveProcessor::prepareToPlay(
 
     mSmoothedDrive.reset(mCurrentSampleRate, 0.05); // 50ms的平滑时间
     mSmoothedOutputLevel.reset(mCurrentSampleRate, 0.05);
-    mSmoothedMix.reset(mCurrentSampleRate, 0.05);
+    mSmoothedWet.reset(mCurrentSampleRate, 0.05);
+    mSmoothedDry.reset(mCurrentSampleRate, 0.05);
     mSmoothedTone.reset(mCurrentSampleRate, 0.05);
     //平滑时间只在prepareToPlay中设置
 }
@@ -153,7 +172,8 @@ void baseOverdriveProcessor::mUpdateProcessorParameters()
 
 	mSmoothedDrive.setTargetValue(mDrive);
     mSmoothedOutputLevel.setTargetValue(mOutputLevel);
-    mSmoothedMix.setTargetValue(mMix);
+    mSmoothedWet.setTargetValue(mWet);
+    mSmoothedDry.setTargetValue(mDry);
     mSmoothedTone.setTargetValue(mTone);
 
 
@@ -168,9 +188,7 @@ void baseOverdriveProcessor::processBlock(
 	juce::AudioBuffer<float>& buffer,
 	int startSample,
 	int numSamples,
-	int numChannels,
-    const std::vector<float>& wetTable,
-    const std::vector<float>& dryTable)
+	int numChannels)
 {
     syncParametersFromAPVTS();
     mUpdateProcessorParameters();
@@ -179,16 +197,14 @@ void baseOverdriveProcessor::processBlock(
 		return;
 	}
 
-    processBaseOverdrive(buffer, startSample, numSamples, numChannels, wetTable, dryTable);
+    processBaseOverdrive(buffer, startSample, numSamples, numChannels);
 }
 
 void baseOverdriveProcessor::processBaseOverdrive(
 	juce::AudioBuffer<float>& buffer,
 	int startSample,
 	int numSamples,
-    int numChannels,
-    const std::vector<float>& wetTable,
-    const std::vector<float>& dryTable)
+    int numChannels)
 {
     auto* channelDataLeft = buffer.getWritePointer(0, startSample);
     auto* channelDataRight = numChannels > 1 ? buffer.getWritePointer(1, startSample) : nullptr;
@@ -197,7 +213,8 @@ void baseOverdriveProcessor::processBaseOverdrive(
 
         float currentDrive = mSmoothedDrive.getNextValue();
         float currentOutputLevel = mSmoothedOutputLevel.getNextValue();
-        float currentMix = mSmoothedMix.getNextValue();
+        float currentWet = mSmoothedWet.getNextValue();
+        float currentDry = mSmoothedDry.getNextValue();
         float currentTone = mSmoothedTone.getNextValue();
 
         mLowPassLeft.setCutOffFrequency(mSmoothedTone.isSmoothing(), currentTone, mCurrentSampleRate);
@@ -215,7 +232,7 @@ void baseOverdriveProcessor::processBaseOverdrive(
 
         //干湿混合
         channelDataLeft[sampleIndex] = 
-            inputSampleLeft * wetTable[currentMix * bufferSize / 4] + channelDataLeft[sampleIndex] * dryTable[currentMix * bufferSize / 4];
+            inputSampleLeft * currentWet + channelDataLeft[sampleIndex] * currentDry;
 
         if(channelDataRight != nullptr){
             mLowPassRight.setCutOffFrequency(mSmoothedTone.isSmoothing(), currentTone, mCurrentSampleRate);
@@ -223,7 +240,7 @@ void baseOverdriveProcessor::processBaseOverdrive(
             inputSampleRight = tanhLookUp(inputSampleRight) * currentOutputLevel;
             inputSampleRight = mLowPassRight.processSample(inputSampleRight);
             channelDataRight[sampleIndex] =
-                inputSampleRight * wetTable[currentMix * bufferSize / 4] + channelDataRight[sampleIndex] * dryTable[currentMix * bufferSize / 4];
+                inputSampleRight * currentWet + channelDataRight[sampleIndex] * currentDry;
         }
     }
 }

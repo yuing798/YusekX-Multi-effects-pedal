@@ -2,6 +2,7 @@
 #include "PluginEditor.h"
 #include "Utils/mathFunc.h"
 #include "constants.h"
+#include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_audio_processors_headless/juce_audio_processors_headless.h"
 #include "plugins/Delay/base_delay.h"
 #include "plugins/Delay/sine_surround.h"
@@ -165,7 +166,10 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             }
         }
     }
-    // auto startTime = std::chrono::high_resolution_clock::now(); //记录处理开始时间
+    juce::FloatVectorOperations::copy(buffer.getWritePointer(0), 
+        buffer.getReadPointer(1),
+        static_cast<unsigned long long>(numSamples));
+
     
     mBaseDelayProcessor.processDelay(
         buffer, 
@@ -173,16 +177,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         numSamples, 
         totalNumOutputChannels);//35.735微秒
 
-    // auto endTime = std::chrono::high_resolution_clock::now(); //记录处理结束时间
-    // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count(); //计算处理时间
-    // processTime += duration;
-    // processCount++;
-    // if(processCount >= 1000)
-    // {
-    //     std::cout << "Average processing time for YOK3508Processor: " << (processTime / processCount) << " us" << std::endl;
-    //     processTime = 0.0f;
-    //     processCount = 0;
-    // }
+
     mBaseTremoloProcessor.processTremolo(
        buffer,
        0,
@@ -210,13 +205,23 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         table.sineTable,
         table.cosTable);//179.225微秒
 
+    auto startTime = std::chrono::high_resolution_clock::now(); //记录处理开始时间
     mBaseOverdriveProcessor.processBlock(
         buffer,
         0,
         numSamples,
-        totalNumOutputChannels,
-        table.sineTable,
-        table.cosTable);
+        totalNumOutputChannels);//18.5us
+
+    auto endTime = std::chrono::high_resolution_clock::now(); //记录处理结束时间
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count(); //计算处理时间
+    processTime += duration;
+    processCount++;
+    if(processCount >= 1000)
+    {
+        std::cout << "Average processing time for Processor: " << (processTime / processCount) << " us" << std::endl;
+        processTime = 0.0f;
+        processCount = 0;
+    }
 
     mBaseEQProcessor.processBlock(buffer, 0, numSamples, totalNumOutputChannels);
 

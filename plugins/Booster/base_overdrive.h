@@ -18,20 +18,24 @@ private:
     juce::Slider mDepthSlider;
     juce::Slider mDriveSlider;
     juce::Slider mOutputLevelSlider;
-    juce::Slider mMixSlider;
     juce::Slider mToneSlider;
+    juce::Slider wetSlider;
+    juce::Slider drySlider;
 
     juce::Label mDepthLabel;
     juce::Label mDriveLabel;
     juce::Label mOutputLevelLabel;
-    juce::Label mMixLabel;
     juce::Label mToneLabel;
+    juce::Label mWetLabel;
+    juce::Label mDryLabel;
 
     std::unique_ptr<ButtonAttachment> mOpenCloseAttachment;
     std::unique_ptr<SliderAttachment> mDriveAttachment;
     std::unique_ptr<SliderAttachment> mOutputLevelAttachment;
     std::unique_ptr<SliderAttachment> mMixAttachment;
     std::unique_ptr<SliderAttachment> mToneAttachment;
+    std::unique_ptr<SliderAttachment> mWetAttachment;
+    std::unique_ptr<SliderAttachment> mDryAttachment;
 
     juce::AudioProcessorValueTreeState& mAPVTS;
 
@@ -51,10 +55,9 @@ private:
     bool mIsOpen { false };
     float mDrive { 4.0f };
     float mOutputLevel { 0.2f };
-    float mMix { 0.5f };
     float mTone { 0.5f };
-
-    std::vector<float> mWetBuffer;
+    float mWet { 0.5f };
+    float mDry { 0.5f };
 
     struct LowPassFilterState {
         float cutOffFrequency { 1000.0f }; // 截止频率
@@ -98,7 +101,9 @@ private:
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedOutputLevel { 0.2f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
-        mSmoothedMix { 0.5f };
+        mSmoothedWet { 0.5f };
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
+        mSmoothedDry { 0.5f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedTone { 0.5f };
 
@@ -109,9 +114,7 @@ private:
         juce::AudioBuffer<float>& buffer,
         int startSample,
         int numSamples,
-        int numChannels,
-        const std::vector<float>& wetTable,
-        const std::vector<float>& dryTable);	
+        int numChannels);	
 
 	void mUpdateProcessorParameters();
 
@@ -126,9 +129,7 @@ public:
         juce::AudioBuffer<float>& buffer,
         int startSample,
         int numSamples,
-        int numChannels,
-        const std::vector<float>& wetTable,
-        const std::vector<float>& dryTable);
+        int numChannels);
 
     void prepareToPlay(double sampleRate, int maximumBlockSize, int numChannels);
 };

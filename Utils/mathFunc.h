@@ -5,6 +5,9 @@
 //线性插值函数
 float getLinearInterpolator(const float* data,int size, float index) ;
 
+//卷积计算公式
+std::vector<float> convolve(const std::vector<float>& input, const std::vector<float>& kernel);
+
 //环形缓冲区避免索引越界函数
 template <typename T1>
 T1 getCircularBufferIndex(T1 currentIndex, int size){
@@ -32,3 +35,6 @@ int gcd(int a, int b);
 
 //查找最近素数
 int getNearestPrimeNumber(float num);
+
+//sinc计算
+float sinc(float x);
