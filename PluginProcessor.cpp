@@ -210,7 +210,8 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         buffer,
         0,
         numSamples,
-        totalNumOutputChannels);//18.5us
+        totalNumOutputChannels);//没有进行任何过采样的时间为18.5us
+        //进行了过采样但是没有多相分解的时间为2500微秒左右
 
     auto endTime = std::chrono::high_resolution_clock::now(); //记录处理结束时间
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count(); //计算处理时间

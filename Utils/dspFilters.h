@@ -13,7 +13,8 @@ private:
     int kernelSize;//卷积核大小
     std::vector<float> FIRCoefficients;//FIR滤波器系数
     std::vector<std::vector<float>> multiPhaseFIRCoefficientsMatrix;//多相分解的FIR系数矩阵
-    FIFO oversamplingFifo;
+    FIFO upSamplingFifo;
+    FIFO downSamplingFifo;
 
 
     void setKernelSize(){
@@ -37,23 +38,23 @@ private:
     }
 
     //将FIR系数填充到多相分解矩阵中
-    void setMultiPhaseFIRCoefficientsMatrix(){
-        size_t rows = oversamplingFactor;
-        size_t columns = static_cast<size_t>(kernelSize);
-        multiPhaseFIRCoefficientsMatrix.resize(
-            oversamplingFactor, 
-            std::vector<float>(columns, 0.0f));
-        for(size_t phase = 0; phase < rows; phase++){
-            for(size_t column = 0; column < columns; column++){
-                multiPhaseFIRCoefficientsMatrix[phase][column] = FIRCoefficients[column * rows + phase];
-                //矩阵形状
-                // 0  4  8  ......
-                // 1  5  9  ......
-                // 2  6  10 ......
-                // 3  7  11 ......
-            }
-        }
-    }
+    // void setMultiPhaseFIRCoefficientsMatrix(){
+    //     size_t rows = oversamplingFactor;
+    //     size_t columns = static_cast<size_t>(kernelSize);
+    //     multiPhaseFIRCoefficientsMatrix.resize(
+    //         oversamplingFactor, 
+    //         std::vector<float>(columns, 0.0f));
+    //     for(size_t phase = 0; phase < rows; phase++){
+    //         for(size_t column = 0; column < columns; column++){
+    //             multiPhaseFIRCoefficientsMatrix[phase][column] = FIRCoefficients[column * rows + phase];
+    //             //矩阵形状
+    //             // 0  4  8  ......
+    //             // 1  5  9  ......
+    //             // 2  6  10 ......
+    //             // 3  7  11 ......
+    //         }
+    //     }
+    // }
 
 public:
     OverSampling(int numCoefficients, int overSamplingFactor)
@@ -61,44 +62,60 @@ public:
         numCoefficients(numCoefficients),
         oversamplingFactor(overSamplingFactor),
         FIRCoefficients(setFIRCoefficients()),
-        oversamplingFifo(numCoefficients)
+        upSamplingFifo(numCoefficients),
+        downSamplingFifo(numCoefficients)
     {
-        if(numCoefficients % oversamplingFactor != 0){
-            //确保系数个数能够被过采样倍数整除
-            throw std::invalid_argument("numCoefficients must be divisible by oversamplingFactor");
-        }
-        setKernelSize();
-        setMultiPhaseFIRCoefficientsMatrix();
+        // if(numCoefficients % oversamplingFactor != 0){
+        //     //确保系数个数能够被过采样倍数整除
+        //     throw std::invalid_argument("numCoefficients must be divisible by oversamplingFactor");
+        // }
+        // setKernelSize();
+        // setMultiPhaseFIRCoefficientsMatrix();
+        upSamplingbuffer.resize(oversamplingFactor, 0.0f);
 
     }
 
     ~OverSampling() = default;
 
     //多支路并行相加
-    std::vector<float> processUpSampling(const std::vector<float>& inputBuffer){
+    // std::vector<float> processUpSampling(const std::vector<float>& inputBuffer){
 
-    }
-
-    //将inputBuffer长度使用填充0方法变成原来的oversamplingFactor倍长
-    std::vector<float> setUpSamplingInputBuffer(const std::vector<float>& inputBuffer){
-        std::vector<float> upSampledInputBuffer(inputBuffer.size() * oversamplingFactor, 0.0f);
-        for(size_t i = 0; i < inputBuffer.size(); i++){
-            upSampledInputBuffer[i * oversamplingFactor] = inputBuffer[i];
-        }
-        return upSampledInputBuffer;
-    }
+    // }
+    std::vector<float> upSamplingbuffer;
 
     //直接进行的processUpSampling方法，作为对比
-    float processUpSamplingDirect(float value){
-        std::vector<float> buffer;
-        buffer.resize(oversamplingFactor, 0.0f);
-        buffer[0] = value;
-        oversamplingFifo.pushBuffer(buffer);
-        float outputValue = 0.0f;
-        for(int index = 0; index < numCoefficients; index++){
-            outputValue += oversamplingFifo.buffer[index] * FIRCoefficients[index];
+    std::vector<float> processUpSamplingDirect(float value){
+        
+        // upSamplingbuffer.assign(oversamplingFactor, 0.0f);
+        std::fill(upSamplingbuffer.begin(), upSamplingbuffer.end(), 0.0f);
+        upSamplingbuffer[0] = value;
+        // upSamplingFifo.pushBuffer(upSamplingbuffer);
+        for(int i = 0; i < oversamplingFactor; i++){
+            upSamplingFifo.push(upSamplingbuffer[i]);
+            upSamplingbuffer[i] = 0.0f;
+            for(int j = 0; j < numCoefficients; j++){
+                upSamplingbuffer[i] += upSamplingFifo.buffer[
+                    getCircularBufferIndex(
+                    upSamplingFifo.read - j, 
+                    upSamplingFifo.buffer.size())] * FIRCoefficients[j];
+            }
         }
-        return outputValue;
+        return upSamplingbuffer;
+    }
+
+    float processDownSamplingDirect(std::vector<float> inputBuffer){
+        downSamplingFifo.pushBuffer(inputBuffer);
+
+        for(int i = 0; i < numCoefficients; i++){
+            inputBuffer[0] += downSamplingFifo.buffer[
+                getCircularBufferIndex(
+                downSamplingFifo.read - i - oversamplingFactor + 1, 
+                //- oversamplingFactor + 1是为了抑制群时延的影响，确保输出样本与输入样本对齐
+                downSamplingFifo.buffer.size())] * FIRCoefficients[i];
+        }
+        //先进行FIR滤波然后下采样
+        //因为抽取只取第一个数据，所以后面的数据直接丢弃
+        return inputBuffer[0];
     }
 
 };

@@ -7,6 +7,7 @@
 #include "Utils/constants.h"
 #include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_gui_basics/juce_gui_basics.h"
+#include "dspFilters.h"
 
 class baseOverdriveEditor : public juce::Component
 {
@@ -58,6 +59,8 @@ private:
     float mTone { 0.5f };
     float mWet { 0.5f };
     float mDry { 0.5f };
+    OverSampling overSamplingStateLeft{64, 4};//63阶FIR滤波器，4倍过采样
+    OverSampling overSamplingStateRight{64, 4};//63阶FIR滤波器，4倍过采样
 
     struct LowPassFilterState {
         float cutOffFrequency { 1000.0f }; // 截止频率

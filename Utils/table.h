@@ -4,7 +4,7 @@
 #include <vector>
 void SineLookUpTable(std::vector<float>& sineTable, int tableSize);
 
-float tanhLookUp(float x);
+void tanhApproximate(float& x);
 
 //创建cos余弦表
 void CosLookUpTable(std::vector<float>& cosTable, int tableSize);

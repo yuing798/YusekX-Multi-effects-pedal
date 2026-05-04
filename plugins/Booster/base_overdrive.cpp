@@ -5,6 +5,7 @@
 #include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_core/system/juce_PlatformDefs.h"
 #include <memory>
+#include <vector>
 
 baseOverdriveProcessor::baseOverdriveProcessor(juce::AudioProcessorValueTreeState& apvts)
     : mAPVTS(apvts)
@@ -224,7 +225,11 @@ void baseOverdriveProcessor::processBaseOverdrive(
         float inputSampleLeft = channelDataLeft[sampleIndex] * currentDrive;
 
         //过载失真
-        inputSampleLeft = tanhLookUp(inputSampleLeft) * currentOutputLevel;
+        std::vector<float> boostBufferLeft = overSamplingStateLeft.processUpSamplingDirect(inputSampleLeft);
+        for(size_t index = 0; index < boostBufferLeft.size(); index++){
+            tanhApproximate(boostBufferLeft[index]);
+        }
+        inputSampleLeft = overSamplingStateLeft.processDownSamplingDirect(boostBufferLeft);
 
         //一阶低通滤波器处理
         inputSampleLeft = mLowPassLeft.processSample(inputSampleLeft);
@@ -234,13 +239,25 @@ void baseOverdriveProcessor::processBaseOverdrive(
         channelDataLeft[sampleIndex] = 
             inputSampleLeft * currentWet + channelDataLeft[sampleIndex] * currentDry;
 
+        //增益补偿
+        channelDataLeft[sampleIndex] *= currentOutputLevel;
+
         if(channelDataRight != nullptr){
             mLowPassRight.setCutOffFrequency(mSmoothedTone.isSmoothing(), currentTone, mCurrentSampleRate);
             float inputSampleRight = channelDataRight[sampleIndex] * currentDrive;
-            inputSampleRight = tanhLookUp(inputSampleRight) * currentOutputLevel;
+
+            std::vector<float> boostBufferRight = overSamplingStateRight.processUpSamplingDirect(inputSampleRight);
+            for(size_t index = 0; index < boostBufferRight.size(); index++){
+                tanhApproximate(boostBufferRight[index]);
+            }
+
+            inputSampleRight = overSamplingStateRight.processDownSamplingDirect(boostBufferRight);
+
             inputSampleRight = mLowPassRight.processSample(inputSampleRight);
             channelDataRight[sampleIndex] =
                 inputSampleRight * currentWet + channelDataRight[sampleIndex] * currentDry;
+
+            channelDataRight[sampleIndex] *= currentOutputLevel;
         }
     }
 }
