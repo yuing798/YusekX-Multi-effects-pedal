@@ -12,10 +12,17 @@ std::vector<float> convolve(const std::vector<float>& input, const std::vector<f
 template <typename T1>
 T1 getCircularBufferIndex(T1 currentIndex, int size){
     if(currentIndex >= size) {
+        
+        while(currentIndex >= size){
+            currentIndex -= size;
+        }
         return currentIndex - size;
     }
     else if(currentIndex < 0) {
-        return currentIndex + size;
+        while(currentIndex < 0){
+            currentIndex += size;
+        }
+        return currentIndex;
     }
     else {
         return currentIndex;

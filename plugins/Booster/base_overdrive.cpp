@@ -4,6 +4,7 @@
 #include "Utils/mathFunc.h"
 #include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_core/system/juce_PlatformDefs.h"
+#include "juce_dsp/juce_dsp.h"
 #include <memory>
 #include <vector>
 
@@ -225,11 +226,11 @@ void baseOverdriveProcessor::processBaseOverdrive(
         float inputSampleLeft = channelDataLeft[sampleIndex] * currentDrive;
 
         //过载失真
-        std::vector<float> boostBufferLeft = overSamplingStateLeft.processUpSamplingDirect(inputSampleLeft);
+        std::vector<float> boostBufferLeft = overSamplingStateLeft.processUpSamplingMultiPhase(inputSampleLeft);
         for(size_t index = 0; index < boostBufferLeft.size(); index++){
             tanhApproximate(boostBufferLeft[index]);
         }
-        inputSampleLeft = overSamplingStateLeft.processDownSamplingDirect(boostBufferLeft);
+        inputSampleLeft = overSamplingStateLeft.processDownSamplingMultiPhase(boostBufferLeft);
 
         //一阶低通滤波器处理
         inputSampleLeft = mLowPassLeft.processSample(inputSampleLeft);
@@ -246,12 +247,12 @@ void baseOverdriveProcessor::processBaseOverdrive(
             mLowPassRight.setCutOffFrequency(mSmoothedTone.isSmoothing(), currentTone, mCurrentSampleRate);
             float inputSampleRight = channelDataRight[sampleIndex] * currentDrive;
 
-            std::vector<float> boostBufferRight = overSamplingStateRight.processUpSamplingDirect(inputSampleRight);
+            std::vector<float> boostBufferRight = overSamplingStateRight.processUpSamplingMultiPhase(inputSampleRight);
             for(size_t index = 0; index < boostBufferRight.size(); index++){
                 tanhApproximate(boostBufferRight[index]);
             }
 
-            inputSampleRight = overSamplingStateRight.processDownSamplingDirect(boostBufferRight);
+            inputSampleRight = overSamplingStateRight.processDownSamplingMultiPhase(boostBufferRight);
 
             inputSampleRight = mLowPassRight.processSample(inputSampleRight);
             channelDataRight[sampleIndex] =

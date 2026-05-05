@@ -6,7 +6,7 @@
 #include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_gui_basics/juce_gui_basics.h"
 #include "Utils/mathFunc.h"
-
+#include "dspFilters.h"
 
 class SchroederReverbEditor final : public juce::Component
 {
@@ -69,30 +69,6 @@ private:
 
     std::vector<float> dryTable;//干信号增益查找表，避免每次处理都进行powf计算
     std::vector<float> wetTable;//湿信号增益查找表，避免每次处理都进行powf计算
-
-    struct preDelay{
-        std::vector<float> preDelayBuffer;
-        int writeIndex{0};
-        float delaySamplesNum{0};
-
-        void prepareToPlay(float sampleRate){
-            float maxDelaySamplesNum = transformMsIntoSamples(200.0f , sampleRate);//200.0f是最大预延迟时间
-            preDelayBuffer.resize(maxDelaySamplesNum + 1, 0.0f);
-            writeIndex = 0;
-        }
-
-        void setValue(float sampleRate, float baseDelayTimeMs){
-            delaySamplesNum = transformMsIntoSamples(baseDelayTimeMs, sampleRate);
-        }
-
-        float processSample(float inputSample){
-            float readIndex = getCircularBufferIndex(writeIndex - delaySamplesNum, preDelayBuffer.size());
-            float readSample = getLinearInterpolator(preDelayBuffer.data(), static_cast<int>(preDelayBuffer.size()), readIndex);
-            writeIndex = getCircularBufferIndex(writeIndex + 1, preDelayBuffer.size());
-            preDelayBuffer[writeIndex] = inputSample;
-            return readSample;
-        }
-    };
 
     preDelay preDelayL;
     preDelay preDelayR;

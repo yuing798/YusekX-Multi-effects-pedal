@@ -207,8 +207,8 @@ void SchroederReverbProcessor::prepareToPlay(double sampleRate, int maximumBlock
     dryLookUpTable(dryTable, currentMaximumBlockSize);
     wetLookUpTable(wetTable, currentMaximumBlockSize);
 
-    preDelayL.prepareToPlay(currentSampleRate);
-    preDelayR.prepareToPlay(currentSampleRate);
+    preDelayL.prepareToPlay(200.0f, currentSampleRate);
+    preDelayR.prepareToPlay(200.0f, currentSampleRate);
 
     combFiltersL.prepareToPlay(currentSampleRate, roomSize, dampLevel);
     combFiltersR.prepareToPlay(currentSampleRate, roomSize, dampLevel);
