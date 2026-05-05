@@ -41,7 +41,7 @@ public:
 
 class BaseDelayProcessor{
 private:
-    static constexpr float maxDelayTimeMs { 500.0f };
+    static constexpr float baseDelaymaxDelayTimeMs { 500.0f };
 
 
     bool isOpen { false };

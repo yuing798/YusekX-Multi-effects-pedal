@@ -55,7 +55,7 @@ void BaseDelayProcessor::createParameterLayout(
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID { BaseDelayTimeId, 1 },
         "Delay Time",
-        juce::NormalisableRange<float>(50.0f, maxDelayTimeMs, 0.1f),
+        juce::NormalisableRange<float>(50.0f, baseDelaymaxDelayTimeMs, 0.1f),
         350.0f));
 
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
@@ -152,7 +152,7 @@ void BaseDelayProcessor::prepareToPlay(double sampleRate, int maximumBlockSize, 
     // 计算最大延迟样本数，并设置延迟缓冲区的大小
     const auto maxDelaySamples =
         static_cast<int>(
-            std::ceil((maxDelayTimeMs / 1000.0f) * static_cast<float>(sampleRate)));
+            std::ceil((baseDelaymaxDelayTimeMs / 1000.0f) * static_cast<float>(sampleRate)));
 
     mDelayBufferLength = maxDelaySamples + maximumBlockSize + 1;
     mDelayBuffer.setSize(numChannels, mDelayBufferLength);
@@ -182,13 +182,11 @@ void BaseDelayProcessor::updateProcessorParameters()
 //得到实际的延迟样本数
 float BaseDelayProcessor::getDelaySamples(float delayTimeMs) const
 {
-    const auto clampedDelayMs = juce::jlimit(1.0f, maxDelayTimeMs, delayTimeMs);
-
     //这里返回的是实际的延迟样本数
     return juce::jlimit(
         1.0f,
         static_cast<float>(mDelayBufferLength - 1),
-        (clampedDelayMs / 1000.0f) * static_cast<float>(mCurrentSampleRate));
+        (delayTimeMs / 1000.0f) * static_cast<float>(mCurrentSampleRate));
 }
 
 void BaseDelayProcessor::processDelay(

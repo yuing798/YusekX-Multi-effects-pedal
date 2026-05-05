@@ -16,7 +16,7 @@ T1 getCircularBufferIndex(T1 currentIndex, int size){
         while(currentIndex >= size){
             currentIndex -= size;
         }
-        return currentIndex - size;
+        return currentIndex;
     }
     else if(currentIndex < 0) {
         while(currentIndex < 0){
