@@ -225,10 +225,8 @@ void SineSurroundProcessor::processBlock(
 			static_cast<float>(mWritePosition) - mGetDelaySamples(rightDelayMs);
 
         //调节索引防止越界
-        leftReadPosition = getCircularBufferIndex(
-            leftReadPosition, static_cast<float>(mDelayBufferLength));
-        rightReadPosition = getCircularBufferIndex(
-            rightReadPosition, static_cast<float>(mDelayBufferLength));
+        leftReadPosition = getCircularBufferIndex(leftReadPosition, mDelayBufferLength);
+        rightReadPosition = getCircularBufferIndex(rightReadPosition, mDelayBufferLength);
 
         //获取当前输入的左右声道样本(原始样本)
 		const float leftInputSample = leftChannelData[sampleIndex];

@@ -355,11 +355,9 @@ void YOK3508Processor::processCertainChorus(
             chorusState.mSineTableIndex);
 
 
-        float sineIndexRight = 
-            getCircularBufferIndex(
-                chorusState.mSineTableIndex + 
-                    transformRadIntoIndexStep(rightRadToLeftRad, sineTable.size()), 
-                sineTable.size());
+        float sineIndexRight = chorusState.mSineTableIndex + 
+            transformRadIntoIndexStep(rightRadToLeftRad, sineTable.size());
+        sineIndexRight = getCircularBufferIndex(sineIndexRight,sineTable.size());
         float sineValueRight = getLinearInterpolator(sineTable.data(), 
             static_cast<int>(sineTable.size()), 
             sineIndexRight);

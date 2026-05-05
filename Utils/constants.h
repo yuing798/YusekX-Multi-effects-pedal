@@ -80,6 +80,29 @@ static constexpr const char* SchroederReverbMakeUpGainId = "schroederReverbMakeU
 static constexpr const int combDelayLineLookUp[8] = {1116,1188,1277,1356,1422,1491,1557,1617};
 static constexpr const int allPassDelayLineLookUp[4] = {225,341,441,556};
 
+//FDN Reverb参数ID
+static constexpr const char* FDNReverbOpenId = "FDNReverbOpen";
+static constexpr const char* FDNReverbDecayLevelId = "FDNReverbDecayLevel";
+static constexpr const char* FDNReverbDryLevelId = "FDNReverbDryLevel";
+static constexpr const char* FDNReverbWetLevelId = "FDNReverbWetLevel";
+static constexpr const char* FDNReverbDampLevelId = "FDNReverbDampLevel";
+static constexpr const char* FDNReverbRoomSizeId = "FDNReverbRoomSize";
+static constexpr const char* FDNReverbPreDelayTimeMsId = "FDNReverbPreDelayTimeMs";
+static constexpr const char* FDNReverbMakeUpGainId = "FDNReverbMakeUpGain";
+
+//八维正交矩阵硬编码
+//0.3536 = 1/sqrt(8)，保证矩阵是单位正交矩阵，能量不变
+static constexpr float hadamard8x8[8][8] = {
+    { 0.3536,  0.3536,  0.3536,  0.3536,  0.3536,  0.3536,  0.3536,  0.3536},
+    { 0.3536, -0.3536,  0.3536, -0.3536,  0.3536, -0.3536,  0.3536, -0.3536},
+    { 0.3536,  0.3536, -0.3536, -0.3536,  0.3536,  0.3536, -0.3536, -0.3536},
+    { 0.3536, -0.3536, -0.3536,  0.3536,  0.3536, -0.3536, -0.3536,  0.3536},
+    { 0.3536,  0.3536,  0.3536,  0.3536, -0.3536, -0.3536, -0.3536, -0.3536},
+    { 0.3536, -0.3536,  0.3536, -0.3536, -0.3536,  0.3536, -0.3536,  0.3536},
+    { 0.3536,  0.3536, -0.3536, -0.3536, -0.3536, -0.3536,  0.3536,  0.3536},
+    { 0.3536, -0.3536, -0.3536,  0.3536, -0.3536,  0.3536,  0.3536, -0.3536}
+};
+
 //attachment别名
 using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
 using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
