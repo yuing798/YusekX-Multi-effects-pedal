@@ -19,6 +19,8 @@ static constexpr const char* BaseDelayWetId { "baseDelayWet" };
 static constexpr const char* BaseDelayDryId { "baseDelayDry" };
 static constexpr const char* BaseDelayFeedbackId { "baseDelayFeedback" };
 static constexpr const char* BaseDelayDampId { "baseDelayDamp" };
+static constexpr const char* BaseDelayDuckerOpenId { "baseDelayDuckerOpen" };//闪避器开关参数ID
+static constexpr const char* BaseDelayDuckerModeId { "baseDelayDuckerMode" };//闪避器模式参数ID，0表示不使用闪避器，1表示Light，2表示Medium，3表示Heavy
 
 //基础颤音效果器ID
 static constexpr const char* BaseTremoloOpenId { "baseTremoloOpen" };
@@ -76,6 +78,8 @@ static constexpr const char* SchroederReverbDampLevelId = "schroederReverbDampLe
 static constexpr const char* SchroederReverbRoomSizeId = "schroederReverbRoomSize";
 static constexpr const char* SchroederReverbBaseDelayTimeMsId = "schroederReverbBaseDelayTimeMs";
 static constexpr const char* SchroederReverbMakeUpGainId = "schroederReverbMakeUpGain";
+static constexpr const char* SchroederReverbDuckerOpenId = "schroederReverbDuckerOpen";
+static constexpr const char* SchroederReverbDuckerModeId = "schroederReverbDuckerMode";
 
 //schroeder reverb中梳状滤波器和全通滤波器的基础延迟时间查找表，单位为采样点数
 static constexpr const int combDelayLineLookUp[8] = {1116,1188,1277,1356,1422,1491,1557,1617};
@@ -90,6 +94,8 @@ static constexpr const char* FDNReverbDampLevelId = "FDNReverbDampLevel";
 static constexpr const char* FDNReverbRoomSizeId = "FDNReverbRoomSize";
 static constexpr const char* FDNReverbPreDelayTimeMsId = "FDNReverbPreDelayTimeMs";
 static constexpr const char* FDNReverbMakeUpGainId = "FDNReverbMakeUpGain";
+static constexpr const char* FDNReverbDuckerOpenId = "FDNReverbDuckerOpen";
+static constexpr const char* FDNReverbDuckerModeId = "FDNReverbDuckerMode";
 
 //八维正交矩阵硬编码
 //0.3536f = 1/sqrt(8)，保证矩阵是单位正交矩阵，能量不变

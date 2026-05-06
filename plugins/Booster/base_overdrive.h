@@ -9,6 +9,7 @@
 #include "juce_gui_basics/juce_gui_basics.h"
 #include "dspFilters.h"
 
+
 class baseOverdriveEditor : public juce::Component
 {
 private:
@@ -37,6 +38,8 @@ private:
     std::unique_ptr<SliderAttachment> mToneAttachment;
     std::unique_ptr<SliderAttachment> mWetAttachment;
     std::unique_ptr<SliderAttachment> mDryAttachment;
+
+
 
     juce::AudioProcessorValueTreeState& mAPVTS;
 

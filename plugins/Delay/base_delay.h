@@ -5,6 +5,7 @@
 #include "Utils/constants.h"
 #include "dspFilters.h"
 #include "juce_gui_basics/juce_gui_basics.h"
+#include "../dynamics/ducker.h"
 
 class BaseDelayEditor final : public juce::Component
 {
@@ -32,6 +33,8 @@ private:
 	std::unique_ptr<SliderAttachment> mFeedbackAttachment;
 	std::unique_ptr<SliderAttachment> dampAttachment;
 
+    std::unique_ptr<DuckerEditor> duckerEditor; 
+
 	void bindParameters();
 
     juce::AudioProcessorValueTreeState& mAPVTS;
@@ -58,6 +61,7 @@ private:
     float damp { 0.5f };
 
     lowPassFilter dampFilter;
+    std::unique_ptr<DuckerProcessor> duckerProcessor;
 
     juce::AudioBuffer<float> mDelayBuffer;
     double mCurrentSampleRate {defaultSampleRate };

@@ -82,7 +82,7 @@ void AudioPluginAudioProcessorEditor::resized()
     outputGainSlider.setBounds(10,10,100,50);
     testButton.setBounds(120, 10, 100, 30);
     effectSelector.setBounds(230, 10, 150, 30);
-    mBaseDelayEditor.setBounds(10, 70, 380, 300);
+    mBaseDelayEditor.setBounds(10, 70, 380, 350);
     mBaseTremoloEditor.setBounds(10, 70, 380, 300);
     mSineSurroundEditor.setBounds(10, 70, 380, 300);
     mYOK3508Editor.setBounds(10, 70, 380, 300);

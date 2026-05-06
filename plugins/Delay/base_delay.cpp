@@ -4,7 +4,10 @@
 
 //效果器构造函数
 BaseDelayProcessor::BaseDelayProcessor(juce::AudioProcessorValueTreeState& apvts)
-    : mAPVTS(apvts){}
+    : mAPVTS(apvts){
+
+    duckerProcessor = std::make_unique<DuckerProcessor>(mAPVTS);
+}
 
 //效果器界面构造函数
 BaseDelayEditor::BaseDelayEditor(juce::AudioProcessorValueTreeState& apvts)
@@ -42,6 +45,10 @@ BaseDelayEditor::BaseDelayEditor(juce::AudioProcessorValueTreeState& apvts)
     addAndMakeVisible(dampLabel);
     dampLabel.setText("Damp", juce::dontSendNotification);
     addAndMakeVisible(dampSlider);
+
+    duckerEditor = std::make_unique<DuckerEditor>(mAPVTS);
+    addAndMakeVisible(*duckerEditor);
+    duckerEditor->makeDuckerVisible();
 
     bindParameters();
 }
@@ -85,6 +92,8 @@ void BaseDelayProcessor::createParameterLayout(
         juce::NormalisableRange<float>(0.0f, 0.95f, 0.01f),
         0.5f));
 
+    DuckerProcessor::createParameterLayout(parameters, BaseDelayDuckerOpenId, BaseDelayDuckerModeId);
+
 }
 
 //将UI滑块和APVTS参数绑定
@@ -118,6 +127,8 @@ void BaseDelayEditor::bindParameters()
         mAPVTS,
         BaseDelayDampId,
         dampSlider);
+
+    duckerEditor->bindParameters(BaseDelayDuckerOpenId, BaseDelayDuckerModeId);
 }
 
 //组件位置
@@ -136,6 +147,8 @@ void BaseDelayEditor::resized()
     mFeedbackSlider.setBounds(190, 130, 200, 30);
     dampLabel.setBounds(100, 170, 80, 30);
     dampSlider.setBounds(190, 170, 200, 30);
+
+    duckerEditor->setBounds(100, 210, 380, 50);
 }
 
 //将DSP参数和APVTS参数同步
@@ -159,6 +172,8 @@ void BaseDelayProcessor::syncParametersFromAPVTS()
 
     if (auto* dampParameter = mAPVTS.getRawParameterValue(BaseDelayDampId))
         damp = dampParameter->load();
+
+    duckerProcessor->syncParametersFromAPVTS(BaseDelayDuckerOpenId, BaseDelayDuckerModeId, mCurrentSampleRate);
 }
 
 //初始化
@@ -188,6 +203,9 @@ void BaseDelayProcessor::prepareToPlay(double sampleRate, int maximumBlockSize, 
     //初始化同步
     syncParametersFromAPVTS();
     updateProcessorParameters();
+
+    duckerProcessor->prepareToPlay(sampleRate);
+
 }
 
 
@@ -262,13 +280,16 @@ void BaseDelayProcessor::processBlock(
 
             const float drySample = channelData[sampleIndex];
             //线性插值获取延迟缓冲区中对应位置的样本值
+
+            float duckerGain = duckerProcessor->processSample(channelData[sampleIndex], duckerProcessor->attackAndReleaseFilters[channel]);
+
             const float delayedSample = getLinearInterpolator(
                 delayData, 
                 mDelayBufferLength, 
                 readPosition);
 
             delayData[mWritePosition] = dampFilter.processSample(drySample + delayedSample * feedbackValue);
-            channelData[sampleIndex] = drySample * dryValue + delayedSample * wetValue;
+            channelData[sampleIndex] = drySample * dryValue + delayedSample * wetValue * duckerGain;
         }
 
         ++mWritePosition;
