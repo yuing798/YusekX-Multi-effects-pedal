@@ -11,6 +11,7 @@
 #include "plugins/Delay/sine_surround.h"
 #include "plugins/EQ/eq.h"
 #include "plugins/MOD/multiChannelsChorus.h"
+#include "plugins/Reverb/FDNReverb.h"
 #include "plugins/Reverb/SchroederReverb.h"
 #include "plugins/Tremolo/base_tremolo.h"
 #include "plugins/plugins.h"
@@ -107,6 +108,7 @@ private:
     baseEQProcessor mBaseEQProcessor;
     BaseCompressorProcessor mBaseCompressorProcessor;
     SchroederReverbProcessor mSchroederReverbProcessor;
+    FDNReverbProcessor mFDNReverbProcessor;
 
     float processTime{ 0.0f };
     int processCount{ 0 };

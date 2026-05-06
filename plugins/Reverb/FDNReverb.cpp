@@ -30,7 +30,7 @@ FDNReverbEditor::FDNReverbEditor(juce::AudioProcessorValueTreeState& apvts)
 
     addAndMakeVisible(wetLevelLabel);
     wetLevelLabel.setText("Wet Level", juce::dontSendNotification);
-    
+    addAndMakeVisible(wetLevelSlider);
 
     addAndMakeVisible(dampLevelLabel);
     dampLevelLabel.setText("Damp Level", juce::dontSendNotification);

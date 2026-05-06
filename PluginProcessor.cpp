@@ -6,6 +6,7 @@
 #include "juce_audio_processors_headless/juce_audio_processors_headless.h"
 #include "plugins/Delay/base_delay.h"
 #include "plugins/Delay/sine_surround.h"
+#include "plugins/Reverb/FDNReverb.h"
 #include "plugins/Reverb/SchroederReverb.h"
 #include <vector>
 #include <chrono>
@@ -30,7 +31,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
             mBaseOverdriveProcessor(apvts),
             mBaseEQProcessor(apvts),
             mBaseCompressorProcessor(apvts),
-            mSchroederReverbProcessor(apvts)
+            mSchroederReverbProcessor(apvts),
+            mFDNReverbProcessor(apvts)
                         
 {
     table.initSineTable(table.sineTable, bufferSize);
@@ -71,6 +73,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     baseEQProcessor::createParameterLayout(parameters);
     BaseCompressorProcessor::createParameterLayout(parameters);
     SchroederReverbProcessor::createParameterLayout(parameters);
+    FDNReverbProcessor::createParameterLayout(parameters);
 
     return { parameters.begin(), parameters.end() };
 }
@@ -95,6 +98,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     mBaseEQProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
     mBaseCompressorProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
     mSchroederReverbProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+    mFDNReverbProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -205,7 +209,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         table.sineTable,
         table.cosTable);//179.225微秒
 
-    auto startTime = std::chrono::high_resolution_clock::now(); //记录处理开始时间
+
     mBaseOverdriveProcessor.processBlock(
         buffer,
         0,
@@ -213,6 +217,17 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         totalNumOutputChannels);//没有进行任何过采样的时间为18.5us
         //进行了过采样但是没有多相分解的时间为2000微秒左右
         //进行了过采样和多相分解的时间为1120微秒左右(四倍过采样，63阶FIR)
+
+
+
+    mBaseEQProcessor.processBlock(buffer, 0, numSamples, totalNumOutputChannels);
+
+    mBaseCompressorProcessor.processCompressor(buffer, 0, numSamples, totalNumOutputChannels);
+
+    mSchroederReverbProcessor.processDelay(buffer, 0, numSamples, totalNumOutputChannels);
+    
+    auto startTime = std::chrono::high_resolution_clock::now(); //记录处理开始时间
+    mFDNReverbProcessor.processDelay(buffer, 0, numSamples, totalNumOutputChannels);
 
     auto endTime = std::chrono::high_resolution_clock::now(); //记录处理结束时间
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count(); //计算处理时间
@@ -224,12 +239,6 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         processTime = 0.0f;
         processCount = 0;
     }
-
-    mBaseEQProcessor.processBlock(buffer, 0, numSamples, totalNumOutputChannels);
-
-    mBaseCompressorProcessor.processCompressor(buffer, 0, numSamples, totalNumOutputChannels);
-
-    mSchroederReverbProcessor.processDelay(buffer, 0, numSamples, totalNumOutputChannels);
 
     for (int channel = 0; channel < totalNumOutputChannels; ++channel)
     {

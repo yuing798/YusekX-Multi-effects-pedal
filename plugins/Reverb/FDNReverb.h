@@ -118,9 +118,12 @@ private:
             float readIndex = getCircularBufferIndex(writeIndex - delaySamplesNum, combDelayLineBuffer.size());
             float readSample = getLinearInterpolator(combDelayLineBuffer.data(), static_cast<int>(combDelayLineBuffer.size()), readIndex);
             readSample = dampFilter.processSample(readSample);
-            combDelayLineBuffer[writeIndex] += inputSample + decay * readSample;//输入信号和反馈信号叠加写入缓冲区
-            writeIndex = getCircularBufferIndex(writeIndex + 1, combDelayLineBuffer.size());
-            return combDelayLineBuffer[writeIndex];
+            //combDelayLineBuffer[writeIndex] += inputSample + decay * readSample;
+            //这时候还不要把输入信号和反馈信号叠加写入缓冲区，因为在FDN网络中还要进行一次写入缓冲区
+            //如果这时候就把叠加信号写进缓冲区的话
+            //缓冲区会出现两倍的叠加信号
+            //writeIndex = getCircularBufferIndex(writeIndex + 1, combDelayLineBuffer.size());
+            return inputSample + decay * readSample;
         }
     };
 
@@ -135,7 +138,8 @@ private:
         void setCombBufferSize(float sampleRate){
 
             combBufferSize = static_cast<int>(combDelayLineLookUp[7] * sampleRate / defaultSampleRate * 2.1) + 1;
-            //乘以2.1是为了在房间尺寸为2时也能保证足够的延迟时间，避免出现死锁问题
+            //乘以2.1是为了在房间尺寸为2(最大)时也能保证足够的延迟时间，
+            // 因为最近素数查找算法会返回一个比理论值大的素数，乘以2.1可以保证在任何房间尺寸下都能满足最长延迟时间的需求
             //所有梳状滤波器共用同一个缓冲区，大小根据最长的延迟时间来设置，确保在任何房间尺寸下都能正常工作
             for(auto& delayLine : FDNDelayLines){
                 delayLine.combDelayLineBuffer.resize(combBufferSize, 0.0f);
@@ -155,6 +159,7 @@ private:
                 FDNDelayLines[i].prepareToPlay(sampleRate, roomSize, dampHz);
             }
             outputLines.resize(numLines, 0.0f);
+            inputLines.resize(numLines, 0.0f);
         }
 
         void setValue(float sampleRate, float roomSize, float dampLevel){
@@ -177,8 +182,9 @@ private:
             }
 
             for(int i = 0; i < numLines; ++i){
-                FDNDelayLines[i].combDelayLineBuffer[FDNDelayLines[i].writeIndex] += inputLines[i];
+                FDNDelayLines[i].combDelayLineBuffer[FDNDelayLines[i].writeIndex] = inputLines[i];
                 //将反馈网络的输出叠加到每个梳状滤波器的输入中
+                FDNDelayLines[i].writeIndex = getCircularBufferIndex(FDNDelayLines[i].writeIndex + 1, FDNDelayLines[i].combDelayLineBuffer.size());
             }
 
             float outputSample = 0.0f;

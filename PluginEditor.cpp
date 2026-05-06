@@ -13,7 +13,8 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (
     mBaseOverdriveEditor(p.getAPVTS()),
     mBaseEQEditor(p.getAPVTS()),
     mBaseCompressorEditor(p.getAPVTS()),
-    mSchroederReverbEditor(p.getAPVTS())
+    mSchroederReverbEditor(p.getAPVTS()),
+    mFDNReverbEditor(p.getAPVTS())
 {
     effectSelector.addItem("base delay", 1);
     effectSelector.addItem("base tremolo", 2);
@@ -23,6 +24,8 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (
     effectSelector.addItem("base EQ", 6);
     effectSelector.addItem("base compressor", 7);
     effectSelector.addItem("Schroeder Reverb", 8);
+    effectSelector.addItem("FDN Reverb", 9);
+
     effectSelector.setSelectedId(1);
     addAndMakeVisible(effectSelector);
     effectSelector.onChange = [this]() { updateEffectEditor(); };
@@ -34,6 +37,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (
     addAndMakeVisible(mBaseEQEditor);
     addAndMakeVisible(mBaseCompressorEditor);
     addAndMakeVisible(mSchroederReverbEditor);
+    addAndMakeVisible(mFDNReverbEditor);
 
     outputGainSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     outputGainSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, 20);
@@ -86,6 +90,7 @@ void AudioPluginAudioProcessorEditor::resized()
     mBaseEQEditor.setBounds(10, 70, 380, 300);
     mBaseCompressorEditor.setBounds(10, 70, 380, 300);
     mSchroederReverbEditor.setBounds(10, 70, 380, 300);
+    mFDNReverbEditor.setBounds(10, 70, 380, 300);
 }
 
 void AudioPluginAudioProcessorEditor::updateEffectEditor(){
@@ -99,6 +104,7 @@ void AudioPluginAudioProcessorEditor::updateEffectEditor(){
     mBaseEQEditor.setVisible(false);
     mBaseCompressorEditor.setVisible(false);
     mSchroederReverbEditor.setVisible(false);
+    mFDNReverbEditor.setVisible(false);
 
     // 2. 只显示选中的编辑器
     switch (effectSelector.getSelectedId())
@@ -111,6 +117,7 @@ void AudioPluginAudioProcessorEditor::updateEffectEditor(){
         case 6: mBaseEQEditor.setVisible(true); break;
         case 7: mBaseCompressorEditor.setVisible(true); break;
         case 8: mSchroederReverbEditor.setVisible(true); break;
+        case 9: mFDNReverbEditor.setVisible(true); break;
         default: break;
     }
 }

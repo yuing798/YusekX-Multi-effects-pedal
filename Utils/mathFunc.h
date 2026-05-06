@@ -16,15 +16,15 @@ T1 getCircularBufferIndex(T1 currentIndex, int size){
         while(currentIndex >= size){
             currentIndex -= size;
         }
-        return;
+        return currentIndex;
     }
     else if(currentIndex < 0) {
         while(currentIndex < 0){
             currentIndex += size;
         }
-        return;
+        return currentIndex;
     }
-    return;
+    return currentIndex;
 }
 //将弧度转化为索引步长
 float transformRadIntoIndexStep(float rad, int tableSize);

@@ -6,6 +6,7 @@
 #include "plugins/Delay/base_delay.h"
 #include "plugins/EQ/eq.h"
 #include "plugins/MOD/multiChannelsChorus.h"
+#include "plugins/Reverb/FDNReverb.h"
 #include "plugins/Reverb/SchroederReverb.h"
 #include "plugins/Tremolo/base_tremolo.h"
 #include "plugins/dynamics/base_compressor.h"
@@ -46,6 +47,7 @@ private:
     baseEQEditor mBaseEQEditor;
     BaseCompressorEditor mBaseCompressorEditor;
     SchroederReverbEditor mSchroederReverbEditor;
+    FDNReverbEditor mFDNReverbEditor;
 
     void updateEffectEditor();
     
