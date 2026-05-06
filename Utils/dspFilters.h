@@ -206,3 +206,26 @@ public:
 
 };
 
+//一阶低通滤波器
+struct lowPassFilter{
+    float b0{1.0f};
+    float a1{0.0f};
+
+    float y1{0.0f};//上一个输出样本
+
+    void prepareToPlay(float dampLevel){
+        a1 = -dampLevel;
+        b0 = 1.0f - dampLevel;
+    }
+
+    void setValue(float dampLevel){
+        prepareToPlay(dampLevel);
+    }
+
+    float processSample(float inputSample){
+        float outputSample = b0 * inputSample - a1 * y1;
+        y1 = outputSample;
+        return outputSample;
+    }
+};
+

@@ -39,6 +39,10 @@ BaseDelayEditor::BaseDelayEditor(juce::AudioProcessorValueTreeState& apvts)
 
     addAndMakeVisible(mFeedbackSlider);
 
+    addAndMakeVisible(dampLabel);
+    dampLabel.setText("Damp", juce::dontSendNotification);
+    addAndMakeVisible(dampSlider);
+
     bindParameters();
 }
 
@@ -75,6 +79,11 @@ void BaseDelayProcessor::createParameterLayout(
         "Delay Feedback",
         juce::NormalisableRange<float>(0.0f, 0.7f, 0.01f),
         0.5f));
+    parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID { BaseDelayDampId, 1 },
+        "Delay Damp",
+        juce::NormalisableRange<float>(0.0f, 0.95f, 0.01f),
+        0.5f));
 
 }
 
@@ -105,7 +114,10 @@ void BaseDelayEditor::bindParameters()
         mAPVTS,
         BaseDelayFeedbackId,
         mFeedbackSlider);
-
+    dampAttachment = std::make_unique<SliderAttachment>(
+        mAPVTS,
+        BaseDelayDampId,
+        dampSlider);
 }
 
 //组件位置
@@ -122,6 +134,8 @@ void BaseDelayEditor::resized()
     mDryLevelSlider.setBounds(190, 90, 200, 30);
     mFeedbackLabel.setBounds(100, 130, 80, 30);
     mFeedbackSlider.setBounds(190, 130, 200, 30);
+    dampLabel.setBounds(100, 170, 80, 30);
+    dampSlider.setBounds(190, 170, 200, 30);
 }
 
 //将DSP参数和APVTS参数同步
@@ -142,6 +156,9 @@ void BaseDelayProcessor::syncParametersFromAPVTS()
 
     if (auto* feedbackParameter = mAPVTS.getRawParameterValue(BaseDelayFeedbackId))
         feedback = feedbackParameter->load();
+
+    if (auto* dampParameter = mAPVTS.getRawParameterValue(BaseDelayDampId))
+        damp = dampParameter->load();
 }
 
 //初始化
@@ -164,6 +181,9 @@ void BaseDelayProcessor::prepareToPlay(double sampleRate, int maximumBlockSize, 
     mSmoothedWetLevel.reset(sampleRate, 0.02);
     mSmoothedDryLevel.reset(sampleRate, 0.02);
     mSmoothedFeedback.reset(sampleRate, 0.02);
+    mSmoothedDamp.reset(sampleRate, 0.02);
+
+    dampFilter.prepareToPlay(damp);
 
     //初始化同步
     syncParametersFromAPVTS();
@@ -177,6 +197,7 @@ void BaseDelayProcessor::updateProcessorParameters()
     mSmoothedWetLevel.setTargetValue(wetLevel);
     mSmoothedDryLevel.setTargetValue(dryLevel);
     mSmoothedFeedback.setTargetValue(feedback);
+    mSmoothedDamp.setTargetValue(damp);
 }
 
 //得到实际的延迟样本数
@@ -224,7 +245,11 @@ void BaseDelayProcessor::processBlock(
         const auto wetValue = mSmoothedWetLevel.getNextValue();
         const auto dryValue = mSmoothedDryLevel.getNextValue();
         const auto feedbackValue = mSmoothedFeedback.getNextValue();
-            
+        const auto dampValue = mSmoothedDamp.getNextValue();
+
+        if(mSmoothedDamp.isSmoothing())
+            dampFilter.setValue(dampValue);
+
         //此处获得几百毫秒前的历史音频样本
         float readPosition = static_cast<float>(mWritePosition) - delaySamples;   
         readPosition = getCircularBufferIndex(readPosition, mDelayBufferLength);
@@ -242,7 +267,7 @@ void BaseDelayProcessor::processBlock(
                 mDelayBufferLength, 
                 readPosition);
 
-            delayData[mWritePosition] = drySample + delayedSample * feedbackValue;
+            delayData[mWritePosition] = dampFilter.processSample(drySample + delayedSample * feedbackValue);
             channelData[sampleIndex] = drySample * dryValue + delayedSample * wetValue;
         }
 

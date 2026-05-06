@@ -18,6 +18,7 @@ static constexpr const char* BaseDelayTimeId { "baseDelayTimeMs" };
 static constexpr const char* BaseDelayWetId { "baseDelayWet" };
 static constexpr const char* BaseDelayDryId { "baseDelayDry" };
 static constexpr const char* BaseDelayFeedbackId { "baseDelayFeedback" };
+static constexpr const char* BaseDelayDampId { "baseDelayDamp" };
 
 //基础颤音效果器ID
 static constexpr const char* BaseTremoloOpenId { "baseTremoloOpen" };

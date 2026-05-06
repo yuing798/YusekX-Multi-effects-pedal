@@ -227,7 +227,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     mSchroederReverbProcessor.processDelay(buffer, 0, numSamples, totalNumOutputChannels);
     
     auto startTime = std::chrono::high_resolution_clock::now(); //记录处理开始时间
-    mFDNReverbProcessor.processDelay(buffer, 0, numSamples, totalNumOutputChannels);
+    mFDNReverbProcessor.processDelay(buffer, 0, numSamples, totalNumOutputChannels);//700微秒
 
     auto endTime = std::chrono::high_resolution_clock::now(); //记录处理结束时间
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count(); //计算处理时间

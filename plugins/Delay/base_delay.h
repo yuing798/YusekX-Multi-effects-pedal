@@ -3,6 +3,8 @@
 #include <JuceHeader.h>
 #include <memory>
 #include "Utils/constants.h"
+#include "dspFilters.h"
+#include "juce_gui_basics/juce_gui_basics.h"
 
 class BaseDelayEditor final : public juce::Component
 {
@@ -15,19 +17,21 @@ private:
 	juce::Slider mWetLevelSlider;
 	juce::Slider mDryLevelSlider;
     juce::Slider mFeedbackSlider;
+    juce::Slider dampSlider;
 
 	juce::Label mDelayTimeLabel;
 	juce::Label mWetLevelLabel;
 	juce::Label mDryLevelLabel;     
     juce::Label mFeedbackLabel;
+	juce::Label dampLabel;
 
 	std::unique_ptr<ButtonAttachment> mOpenCloseAttachment;
 	std::unique_ptr<SliderAttachment> mDelayTimeAttachment;
 	std::unique_ptr<SliderAttachment> mWetLevelAttachment;
 	std::unique_ptr<SliderAttachment> mDryLevelAttachment;
 	std::unique_ptr<SliderAttachment> mFeedbackAttachment;
+	std::unique_ptr<SliderAttachment> dampAttachment;
 
-	
 	void bindParameters();
 
     juce::AudioProcessorValueTreeState& mAPVTS;
@@ -51,6 +55,9 @@ private:
     float wetLevel { 0.35f };
     float dryLevel { 1.0f };
     float feedback { 0.5f };
+    float damp { 0.5f };
+
+    lowPassFilter dampFilter;
 
     juce::AudioBuffer<float> mDelayBuffer;
     double mCurrentSampleRate {defaultSampleRate };
@@ -65,6 +72,8 @@ private:
         mSmoothedDryLevel { 1.0f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedFeedback { 0.5f };
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
+        mSmoothedDamp { 0.5f };
 
     float getDelaySamples(float delayTimeMs) const;
 

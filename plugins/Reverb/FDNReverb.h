@@ -79,27 +79,7 @@ private:
         float delaySamplesNum{0.0f};
         int combDelayLineValue{0};//根据采样率和房间尺寸计算出的基础延迟时间对应的样本数，作为buffer大小的参考值
 
-        struct lowPassFilter{
-            float b0{1.0f};
-            float a1{0.0f};
-
-            float y1{0.0f};//上一个输出样本
-
-            void prepareToPlay(float dampLevel){
-                a1 = -dampLevel;
-                b0 = 1.0f - dampLevel;
-            }
-
-            void setValue(float dampLevel){
-                prepareToPlay(dampLevel);
-            }
-
-            float processSample(float inputSample){
-                float outputSample = b0 * inputSample - a1 * y1;
-                y1 = outputSample;
-                return outputSample;
-            }
-        }dampFilter;//每个梳状滤波器内置一个低通滤波器，用于模拟高频衰减
+        lowPassFilter dampFilter;//每个梳状滤波器内置一个低通滤波器，用于模拟高频衰减
 
         void prepareToPlay(float sampleRate, float roomSize, float dampLevel){
             delaySamplesNum = getNearestPrimeNumber(combDelayLineValue * sampleRate / defaultSampleRate * roomSize);
