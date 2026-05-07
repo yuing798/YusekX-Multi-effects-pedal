@@ -2,12 +2,14 @@
 
 #include <JuceHeader.h>
 #include <cstddef>
+#include <memory>
 #include <vector>
 #include "Utils/constants.h"
 #include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_gui_basics/juce_gui_basics.h"
 #include "Utils/mathFunc.h"
 #include "dspFilters.h"
+#include "../dynamics/ducker.h"
 
 class FDNReverbEditor final : public juce::Component
 {
@@ -41,6 +43,8 @@ private:
     std::unique_ptr<SliderAttachment> preDelayTimeMsAttachment;
     std::unique_ptr<SliderAttachment> makeUpGainAttachment;
 
+    std::unique_ptr<DuckerEditor> duckerEditor;
+
 	void bindParameters();
 
     juce::AudioProcessorValueTreeState& mAPVTS;
@@ -68,8 +72,7 @@ private:
     float makeUpGainDB { 0.0f };//补偿增益
     float makeUpGain{0.0f};//补偿增益线性值
 
-    preDelay preDelayL;
-    preDelay preDelayR;
+    std::vector<preDelay> preDelays{2};;
 
     struct FDNDelayLine{//单个反馈梳状滤波器结构体
         //y[n] = x[n] + decay * y[n - delaySamples]
@@ -175,8 +178,9 @@ private:
         }
     };
 
-    FDNNetwork FDNNetworkL;
-    FDNNetwork FDNNetworkR;
+    std::vector<FDNNetwork> FDNNetworks{2};//左右声道的FDN网络
+
+    std::unique_ptr<DuckerProcessor> duckerProcessor;
 
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>

@@ -278,18 +278,18 @@ void BaseDelayProcessor::processBlock(
                 buffer.getWritePointer(channel, startSample);
             auto* delayData = mDelayBuffer.getWritePointer(channel);
 
-            const float drySample = channelData[sampleIndex];
+            const float drySample = channelData[sampleIndex] * dryValue;
             //线性插值获取延迟缓冲区中对应位置的样本值
 
-            float duckerGain = duckerProcessor->processSample(channelData[sampleIndex], duckerProcessor->attackAndReleaseFilters[channel]);
+            float duckerGain = duckerProcessor->processSample(drySample, duckerProcessor->attackAndReleaseFilters[channel]);
 
             const float delayedSample = getLinearInterpolator(
                 delayData, 
                 mDelayBufferLength, 
                 readPosition);
 
-            delayData[mWritePosition] = dampFilter.processSample(drySample + delayedSample * feedbackValue);
-            channelData[sampleIndex] = drySample * dryValue + delayedSample * wetValue * duckerGain;
+            delayData[mWritePosition] = dampFilter.processSample(channelData[sampleIndex] + delayedSample * feedbackValue);
+            channelData[sampleIndex] = drySample + delayedSample * wetValue * duckerGain;
         }
 
         ++mWritePosition;

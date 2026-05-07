@@ -136,6 +136,8 @@ float DuckerProcessor::processSample(float drySample, attackAndReleaseFilter& at
 
     gainDB = attackAndRelease.processSample(gainDB);
 
+    gainDB = juce::jmax(gainDB, maxAttenuationDB);//限制最大衰减量
+
     //将处理后的dB值转换回线性增益
     float gain = juce::Decibels::decibelsToGain(gainDB) ;
 

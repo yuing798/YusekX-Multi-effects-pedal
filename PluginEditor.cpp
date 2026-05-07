@@ -90,7 +90,7 @@ void AudioPluginAudioProcessorEditor::resized()
     mBaseEQEditor.setBounds(10, 70, 380, 300);
     mBaseCompressorEditor.setBounds(10, 70, 380, 300);
     mSchroederReverbEditor.setBounds(10, 70, 380, 300);
-    mFDNReverbEditor.setBounds(10, 70, 380, 300);
+    mFDNReverbEditor.setBounds(10, 70, 380, 350);
 }
 
 void AudioPluginAudioProcessorEditor::updateEffectEditor(){

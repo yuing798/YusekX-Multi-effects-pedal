@@ -4,7 +4,9 @@
 #include "mathFunc.h"
 
 FDNReverbProcessor::FDNReverbProcessor(juce::AudioProcessorValueTreeState& apvts)
-    : mAPVTS(apvts){}
+    : mAPVTS(apvts){
+    duckerProcessor = std::make_unique<DuckerProcessor>(mAPVTS);    
+}
 
 //TODO2:Editor构造函数
 FDNReverbEditor::FDNReverbEditor(juce::AudioProcessorValueTreeState& apvts)
@@ -47,6 +49,10 @@ FDNReverbEditor::FDNReverbEditor(juce::AudioProcessorValueTreeState& apvts)
     addAndMakeVisible(makeUpGainLabel);
     makeUpGainLabel.setText("Makeup Gain", juce::dontSendNotification);
     addAndMakeVisible(makeUpGainSlider);
+
+    duckerEditor = std::make_unique<DuckerEditor>(mAPVTS);
+    addAndMakeVisible(*duckerEditor);
+    duckerEditor->makeDuckerVisible();
 
     bindParameters();//将UI和APVTS参数绑定的函数放在构造函数中
 }
@@ -95,6 +101,8 @@ void FDNReverbProcessor::createParameterLayout(
         "FDN Reverb Make Up Gain",
         juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f),
         0.0f));
+
+    DuckerProcessor::createParameterLayout(parameters, FDNReverbDuckerOpenId, FDNReverbDuckerModeId);
     //......
 }
 
@@ -133,6 +141,7 @@ void FDNReverbEditor::bindParameters()
         mAPVTS,
         FDNReverbMakeUpGainId,
         makeUpGainSlider);
+    duckerEditor->bindParameters(FDNReverbDuckerOpenId, FDNReverbDuckerModeId);
 
     //......
 
@@ -160,6 +169,8 @@ void FDNReverbEditor::resized()
     makeUpGainLabel.setBounds(110, 250, 100, 30);
     makeUpGainSlider.setBounds(220, 250, 150, 30);
 
+    duckerEditor->setBounds(110, 290, 260, 50);
+
 }
 
 //将DSP参数和APVTS参数同步
@@ -183,6 +194,8 @@ void FDNReverbProcessor::syncParametersFromAPVTS()
         preDelayTimeMs = preDelayTimeMsParameter->load();
     if(auto* makeUpGainParameter = mAPVTS.getRawParameterValue(FDNReverbMakeUpGainId))
         makeUpGainDB = makeUpGainParameter->load();
+
+    duckerProcessor->syncParametersFromAPVTS(FDNReverbDuckerOpenId, FDNReverbDuckerModeId, currentSampleRate);
 }
 
 //初始化
@@ -204,13 +217,14 @@ void FDNReverbProcessor::prepareToPlay(double sampleRate, int maximumBlockSize, 
     mSmoothedPreDelayTimeMs.reset(sampleRate, 0.02);
     mSmoothedMakeUpGainDB.reset(sampleRate, 0.02);
 
-    preDelayL.prepareToPlay(200.0f, currentSampleRate);
-    preDelayR.prepareToPlay(200.0f, currentSampleRate);
-
-    FDNNetworkL.prepareToPlay(currentSampleRate, roomSize, dampLevel);
-    FDNNetworkR.prepareToPlay(currentSampleRate, roomSize, dampLevel);
+    for(int channel = 0; channel < numChannels; ++channel){
+        preDelays[channel].prepareToPlay(200.0f, currentSampleRate);
+        FDNNetworks[channel].prepareToPlay(currentSampleRate, roomSize, dampLevel);
+    }
 
     makeUpGain = std::pow(10.0f, makeUpGainDB / 20.0f);
+
+    duckerProcessor->prepareToPlay(sampleRate); 
 }
 
 
@@ -253,12 +267,6 @@ void FDNReverbProcessor::processBlock(
     //执行链路
     //预延迟——》并联梳状滤波器——》低通滤波器——》串联全通滤波器——》干湿混合——》增益补偿
 
-    auto *channelDataLeft = buffer.getWritePointer(0, startSample);
-    float * channelDataRight = nullptr;
-    if(numChannels > 1){
-        channelDataRight = buffer.getWritePointer(1, startSample);
-        //对右声道进行处理
-    }
     for(int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++){
 
         float currentDecayLevel = mSmoothedDecayLevel.getNextValue();
@@ -269,35 +277,26 @@ void FDNReverbProcessor::processBlock(
         float currentPreDelayTimeMs = mSmoothedPreDelayTimeMs.getNextValue();
         float currentMakeUpGainDB = mSmoothedMakeUpGainDB.getNextValue();
 
-        if(mSmoothedPreDelayTimeMs.isSmoothing()){
-            preDelayL.setValue(currentSampleRate, currentPreDelayTimeMs);
-            preDelayR.setValue(currentSampleRate, currentPreDelayTimeMs);
-        }   
-        if(mSmoothedDecayLevel.isSmoothing() || mSmoothedDampLevel.isSmoothing() || mSmoothedRoomSize.isSmoothing()){
-            FDNNetworkL.setValue(currentSampleRate, currentRoomSize, currentDampLevel);
-            FDNNetworkR.setValue(currentSampleRate, currentRoomSize, currentDampLevel);
-        }
+
         if (mSmoothedMakeUpGainDB.isSmoothing())
             makeUpGain = std::pow(10.0f,currentMakeUpGainDB / 20.0f);
 
+        for(int channel = 0; channel < numChannels; ++channel){
 
-        float inputSampleLeft = channelDataLeft[sampleIndex];
-        
-        float drySampleLeft = inputSampleLeft;
+            if(mSmoothedPreDelayTimeMs.isSmoothing()){
+                preDelays[channel].setValue(currentSampleRate, currentPreDelayTimeMs);
+            }   
+            if(mSmoothedDecayLevel.isSmoothing() || mSmoothedDampLevel.isSmoothing() || mSmoothedRoomSize.isSmoothing()){
+                FDNNetworks[channel].setValue(currentSampleRate, currentRoomSize, currentDampLevel);
+            }
 
-        inputSampleLeft = preDelayL.processSample(inputSampleLeft);
-        inputSampleLeft = FDNNetworkL.processSample(inputSampleLeft, currentDecayLevel);
-
-        channelDataLeft[sampleIndex] = (inputSampleLeft * currentWet + drySampleLeft * currentDry) * makeUpGain;
-
-        if(numChannels > 1){
-            float inputSampleRight = channelDataRight[sampleIndex];
-            float drySampleRight = inputSampleRight;
-
-            inputSampleRight = preDelayR.processSample(inputSampleRight);
-            inputSampleRight = FDNNetworkR.processSample(inputSampleRight, currentDecayLevel);
-
-            channelDataRight[sampleIndex] = (inputSampleRight * currentWet + drySampleRight * currentDry) * makeUpGain;
+            float* channelData = buffer.getWritePointer(channel, startSample);
+            float inputSample = channelData[sampleIndex];
+            float drySample = inputSample * currentDry;
+            float duckerGain = duckerProcessor->processSample(inputSample, duckerProcessor->attackAndReleaseFilters[channel]);
+            inputSample = preDelays[channel].processSample(inputSample);
+            inputSample = FDNNetworks[channel].processSample(inputSample, currentDecayLevel);
+            channelData[sampleIndex] = (inputSample * currentWet * duckerGain + drySample) * makeUpGain;
         }
     }
 }
