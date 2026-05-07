@@ -92,7 +92,10 @@ void SineSurroundProcessor::createParameterLayout(std::vector<std::unique_ptr<ju
 void SineSurroundProcessor::syncParametersFromAPVTS()
 {
     if (auto* openParameter = mAPVTS.getRawParameterValue(SineSurroundOpenId))
+    {
         mIsOpen = openParameter->load() >= 0.5f;
+    }
+    
 
     if (auto* sineDepthParameter = mAPVTS.getRawParameterValue(SineSurroundDepthId))
         mSineDepthMs = sineDepthParameter->load();
@@ -153,6 +156,7 @@ void SineSurroundProcessor::prepareToPlay(
 	mSmoothedPhaseFrequencyHz.reset(sampleRate, 0.02);
     mSmoothedWetLevel.reset(sampleRate, 0.02);
     mSmoothedDryLevel.reset(sampleRate, 0.02);
+    smoothedBypassGain.reset(sampleRate, 0.05);
 
     syncParametersFromAPVTS();
 	mUpdateProcessorParameters();
@@ -169,7 +173,8 @@ void SineSurroundProcessor::processSineSurround(
     syncParametersFromAPVTS();
     mUpdateProcessorParameters();
 
-	if(!mIsOpen){
+	if(smoothedBypassGain.getCurrentValue() > 0.999f && smoothedBypassGain.getTargetValue() == 1.0f)
+    {
 		return;
 	}
 
@@ -183,11 +188,7 @@ void SineSurroundProcessor::mUpdateProcessorParameters()
 	mSmoothedPhaseFrequencyHz.setTargetValue(mPhaseFrequencyHz);
 	mSmoothedDryLevel.setTargetValue(mDryLevel);
 	mSmoothedWetLevel.setTargetValue(mWetLevel);
-
-    mSmoothedSineDepthMs.reset(mCurrentSampleRate, 0.02);
-    mSmoothedPhaseFrequencyHz.reset(mCurrentSampleRate, 0.02);
-    mSmoothedDryLevel.reset(mCurrentSampleRate, 0.02);
-    mSmoothedWetLevel.reset(mCurrentSampleRate, 0.02);
+    smoothedBypassGain.setTargetValue(mIsOpen ? 0.0f : 1.0f);
 }
 
 void SineSurroundProcessor::processBlock(
@@ -212,6 +213,7 @@ void SineSurroundProcessor::processBlock(
 		const float currentPhaseFrequencyHz = mSmoothedPhaseFrequencyHz.getNextValue();
         const float currentDryLevel = mSmoothedDryLevel.getNextValue();
         const float currentWetLevel = mSmoothedWetLevel.getNextValue();
+        float currentBypassValue = smoothedBypassGain.getNextValue();
 
 		const int sineIndex = static_cast<int>(mSineTableIndex);
 		const float sineValue = sineTable[static_cast<size_t>(sineIndex)];
@@ -246,6 +248,9 @@ void SineSurroundProcessor::processBlock(
             mDelayBufferLength,
 			rightReadPosition) * currentWetLevel +
             rightInputSample * currentDryLevel;
+
+        leftChannelData[sampleIndex] = leftChannelData[sampleIndex] * (1.0f - currentBypassValue) + leftInputSample * currentBypassValue;
+        rightChannelData[sampleIndex] = rightChannelData[sampleIndex] * (1.0f - currentBypassValue) + rightInputSample * currentBypassValue;
 
 		mSineTableIndex +=
 			(currentPhaseFrequencyHz / static_cast<float>(mCurrentSampleRate)) *

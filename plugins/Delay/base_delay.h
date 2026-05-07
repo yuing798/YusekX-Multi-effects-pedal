@@ -79,7 +79,7 @@ private:
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedDamp { 0.5f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> 
-        mBypassGain { 0.0f };
+        smoothBypassGain { 0.0f };
 
     float getDelaySamples(float delayTimeMs) const;
 

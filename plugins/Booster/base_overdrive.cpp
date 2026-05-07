@@ -156,14 +156,15 @@ void baseOverdriveProcessor::prepareToPlay(
     syncParametersFromAPVTS();
 	mUpdateProcessorParameters();
 
-    mLowPassLeft.init(mTone, mCurrentSampleRate); // 初始化低通滤波器状态
-    mLowPassRight.init(mTone, mCurrentSampleRate);
+    lowPassFilters[0].init(mTone, mCurrentSampleRate); // 初始化低通滤波器状态
+    lowPassFilters[1].init(mTone, mCurrentSampleRate);
 
     mSmoothedDrive.reset(mCurrentSampleRate, 0.05); // 50ms的平滑时间
     mSmoothedOutputLevel.reset(mCurrentSampleRate, 0.05);
     mSmoothedWet.reset(mCurrentSampleRate, 0.05);
     mSmoothedDry.reset(mCurrentSampleRate, 0.05);
     mSmoothedTone.reset(mCurrentSampleRate, 0.05);
+    smoothBypassGain.reset(mCurrentSampleRate, 0.05);
     //平滑时间只在prepareToPlay中设置
 }
 
@@ -177,7 +178,7 @@ void baseOverdriveProcessor::mUpdateProcessorParameters()
     mSmoothedWet.setTargetValue(mWet);
     mSmoothedDry.setTargetValue(mDry);
     mSmoothedTone.setTargetValue(mTone);
-
+    smoothBypassGain.setTargetValue(mIsOpen ? 0.0f : 1.0f);
 
     //reset会重置isSmoothing标志位，
     // 所以在processBlock里调用mUpdateProcessorParameters时，
@@ -195,7 +196,7 @@ void baseOverdriveProcessor::processBlock(
     syncParametersFromAPVTS();
     mUpdateProcessorParameters();
 
-	if(!mIsOpen){
+	if(smoothBypassGain.getCurrentValue() > 0.999f && smoothBypassGain.getTargetValue() == 1.0f){
 		return;
 	}
 
@@ -208,8 +209,6 @@ void baseOverdriveProcessor::processBaseOverdrive(
 	int numSamples,
     int numChannels)
 {
-    auto* channelDataLeft = buffer.getWritePointer(0, startSample);
-    auto* channelDataRight = numChannels > 1 ? buffer.getWritePointer(1, startSample) : nullptr;
 
     for(int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex){
 
@@ -218,50 +217,41 @@ void baseOverdriveProcessor::processBaseOverdrive(
         float currentWet = mSmoothedWet.getNextValue();
         float currentDry = mSmoothedDry.getNextValue();
         float currentTone = mSmoothedTone.getNextValue();
+        float currentBypassGain = smoothBypassGain.getNextValue();
 
-        mLowPassLeft.setCutOffFrequency(mSmoothedTone.isSmoothing(), currentTone, mCurrentSampleRate);
+        for(int channel = 0; channel < numChannels; ++channel){
+            float* channelData = buffer.getWritePointer(channel, startSample);
+            lowPassFilters[channel].setCutOffFrequency(mSmoothedTone.isSmoothing(), currentTone, mCurrentSampleRate);
+            //信号放大
+            float rawSample = channelData[sampleIndex];
+            float inputSample = channelData[sampleIndex] * currentDrive;
 
-
-        //信号放大
-        float inputSampleLeft = channelDataLeft[sampleIndex] * currentDrive;
-
-        //过载失真
-        std::vector<float> boostBufferLeft = overSamplingStateLeft.processUpSamplingMultiPhase(inputSampleLeft);
-        for(size_t index = 0; index < boostBufferLeft.size(); index++){
-            tanhApproximate(boostBufferLeft[index]);//使用近似算法减少计算量
-        }
-        inputSampleLeft = overSamplingStateLeft.processDownSamplingMultiPhase(boostBufferLeft);
-        //这里没有进行群时延补偿，因为15.75个样本的延迟对于过载效果来说是可以接受的，而且进行群时延补偿会增加CPU开销
-        //15.75 = (63阶FIR滤波器的群时延) / (4倍过采样) = 15.75个样本
-
-        //一阶低通滤波器处理
-        inputSampleLeft = mLowPassLeft.processSample(inputSampleLeft);
-
-
-        //干湿混合
-        channelDataLeft[sampleIndex] = 
-            inputSampleLeft * currentWet + channelDataLeft[sampleIndex] * currentDry;
-
-        //增益补偿
-        channelDataLeft[sampleIndex] *= currentOutputLevel;
-
-        if(channelDataRight != nullptr){
-            mLowPassRight.setCutOffFrequency(mSmoothedTone.isSmoothing(), currentTone, mCurrentSampleRate);
-            float inputSampleRight = channelDataRight[sampleIndex] * currentDrive;
-
-            std::vector<float> boostBufferRight = overSamplingStateRight.processUpSamplingMultiPhase(inputSampleRight);
-            for(size_t index = 0; index < boostBufferRight.size(); index++){
-                tanhApproximate(boostBufferRight[index]);
+            //过载失真
+            std::vector<float> boostBufferLeft = overSamplingStates[channel].processUpSamplingMultiPhase(inputSample);
+            for(size_t index = 0; index < boostBufferLeft.size(); index++){
+                tanhApproximate(boostBufferLeft[index]);//使用近似算法减少计算量
             }
+            inputSample = overSamplingStates[channel].processDownSamplingMultiPhase(boostBufferLeft);
+            //这里没有进行群时延补偿，因为15.75个样本的延迟对于过载效果来说是可以接受的，而且进行群时延补偿会增加CPU开销
+            //15.75 = (63阶FIR滤波器的群时延) / (4倍过采样) = 15.75个样本
 
-            inputSampleRight = overSamplingStateRight.processDownSamplingMultiPhase(boostBufferRight);
+            //一阶低通滤波器处理
+            inputSample = lowPassFilters[channel].processSample(inputSample);
 
-            inputSampleRight = mLowPassRight.processSample(inputSampleRight);
-            channelDataRight[sampleIndex] =
-                inputSampleRight * currentWet + channelDataRight[sampleIndex] * currentDry;
 
-            channelDataRight[sampleIndex] *= currentOutputLevel;
+            //干湿混合
+            channelData[sampleIndex] = 
+                inputSample * currentWet + channelData[sampleIndex] * currentDry;
+
+            //增益补偿
+            channelData[sampleIndex] *= currentOutputLevel;
+
+            //旁路处理
+            channelData[sampleIndex] = 
+                channelData[sampleIndex] * (1.0f - currentBypassGain) + rawSample * currentBypassGain;
         }
+
+
     }
 }
 

@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 #include "Utils/constants.h"
+#include "juce_audio_basics/juce_audio_basics.h"
 
 static constexpr float maxSineDepthMs = 8.0f;
 static constexpr float SineMsOffset = 12.0f;
@@ -65,6 +66,8 @@ private:
         mSmoothedDryLevel { 1.0f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedWetLevel { 0.5f };
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
+        smoothedBypassGain { 1.0f };
 
     juce::AudioProcessorValueTreeState& mAPVTS;
 

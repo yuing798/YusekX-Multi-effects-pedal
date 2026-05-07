@@ -38,8 +38,6 @@ private:
     std::unique_ptr<SliderAttachment> mWetAttachment;
     std::unique_ptr<SliderAttachment> mDryAttachment;
 
-
-
     juce::AudioProcessorValueTreeState& mAPVTS;
 
     void bindParameters();
@@ -61,8 +59,8 @@ private:
     float mTone { 0.5f };
     float mWet { 0.5f };
     float mDry { 0.5f };
-    OverSampling overSamplingStateLeft{64, 4};//63阶FIR滤波器，4倍过采样
-    OverSampling overSamplingStateRight{64, 4};//63阶FIR滤波器，4倍过采样
+
+    std::vector<OverSampling> overSamplingStates = std::vector<OverSampling>(2, OverSampling(64,4));
 
     struct LowPassFilterState {
         float cutOffFrequency { 1000.0f }; // 截止频率
@@ -98,8 +96,7 @@ private:
 
     };//一阶低通滤波器状态
 
-    LowPassFilterState mLowPassLeft;
-    LowPassFilterState mLowPassRight;
+    std::vector<LowPassFilterState> lowPassFilters{2}; 
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedDrive { 4.0f };
@@ -111,6 +108,8 @@ private:
         mSmoothedDry { 0.5f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedTone { 0.5f };
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
+        smoothBypassGain { 0.0f };
 
 
     juce::AudioProcessorValueTreeState& mAPVTS;
