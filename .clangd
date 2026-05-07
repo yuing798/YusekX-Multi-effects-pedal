@@ -1,0 +1,4 @@
+# .clangd
+Diagnostics:
+  Suppress:
+    - -Wunused-const-variable

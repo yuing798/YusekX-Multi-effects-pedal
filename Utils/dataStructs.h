@@ -15,24 +15,8 @@ public:
     int read{0};//因为在流式音频DSP中，读指针和写指针应该都是距离当前处理样本最近的位置
     std::vector<float> buffer;
     FIFO(int size) : size(size), count(0), write(0), buffer(size, 0.0f) {}
-    void push(float value){
-        if(count < size){
-            buffer[write] = value;
-            read = write; //更新读指针为当前写指针位置
-            write = (write + 1) % size;
-            count++;
-        }else{
-            //缓冲区已满，覆盖最旧的数据
-            buffer[write] = value;
-            read = write; //更新读指针为当前写指针位置
-            write = (write + 1) % size;
-        }
-    }
+    void push(float value);
 
     //推入一个数组
-    void pushBuffer(std::vector<float>& inputBuffer){
-        for(float value : inputBuffer){
-            push(value);
-        }
-    }
+    void pushBuffer(std::vector<float>& inputBuffer);
 };

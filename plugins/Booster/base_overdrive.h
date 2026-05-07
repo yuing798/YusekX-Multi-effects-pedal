@@ -1,7 +1,6 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include <array>
 #include <memory>
 #include <vector>
 #include "Utils/constants.h"
