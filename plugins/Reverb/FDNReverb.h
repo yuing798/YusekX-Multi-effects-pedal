@@ -9,7 +9,7 @@
 #include "juce_gui_basics/juce_gui_basics.h"
 #include "Utils/mathFunc.h"
 #include "dspFilters.h"
-#include "../dynamics/ducker.h"
+#include "UtilsEffect.h"
 
 class FDNReverbEditor final : public juce::Component
 {

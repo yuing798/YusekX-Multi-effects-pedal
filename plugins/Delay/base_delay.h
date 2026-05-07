@@ -5,7 +5,7 @@
 #include "Utils/constants.h"
 #include "dspFilters.h"
 #include "juce_gui_basics/juce_gui_basics.h"
-#include "ducker.h"
+#include "UtilsEffect.h"
 
 class BaseDelayEditor final : public juce::Component
 {
