@@ -155,8 +155,10 @@ void BaseDelayEditor::resized()
 void BaseDelayProcessor::syncParametersFromAPVTS()
 {
     //if语句用来判断ID正确以及参数是否已经被注册
-    if (auto* openParameter = mAPVTS.getRawParameterValue(BaseDelayOpenId))
+    if (auto* openParameter = mAPVTS.getRawParameterValue(BaseDelayOpenId)){
         isOpen = openParameter->load() >= 0.5f;
+        mBypassGain.setTargetValue(isOpen ? 1.0f : 0.0f);
+    }
 
     if (auto* delayTimeParameter = mAPVTS.getRawParameterValue(BaseDelayTimeId))
         delayTimeMs = delayTimeParameter->load();
@@ -197,6 +199,7 @@ void BaseDelayProcessor::prepareToPlay(double sampleRate, int maximumBlockSize, 
     mSmoothedDryLevel.reset(sampleRate, 0.02);
     mSmoothedFeedback.reset(sampleRate, 0.02);
     mSmoothedDamp.reset(sampleRate, 0.02);
+    mBypassGain.reset(sampleRate, 0.05);
 
     dampFilter.prepareToPlay(damp);
 
@@ -241,7 +244,11 @@ void BaseDelayProcessor::processDelay(
     syncParametersFromAPVTS();
     updateProcessorParameters();//平滑度更新不用放在for循环中
 
-    if (!isOpen)
+    const float currentGain = mBypassGain.getCurrentValue();
+    const float targetGain = mBypassGain.getTargetValue();
+
+    // 效果器关闭且旁通增益已稳定到 0.0，完全跳过
+    if (targetGain == 0.0f && currentGain < 0.001f)
         return;
 
     processBlock(buffer, startSample, numSamples, numChannels);
@@ -264,6 +271,7 @@ void BaseDelayProcessor::processBlock(
         const auto dryValue = mSmoothedDryLevel.getNextValue();
         const auto feedbackValue = mSmoothedFeedback.getNextValue();
         const auto dampValue = mSmoothedDamp.getNextValue();
+        const float bypassGainValue = mBypassGain.getNextValue();
 
         if(mSmoothedDamp.isSmoothing())
             dampFilter.setValue(dampValue);
@@ -276,6 +284,8 @@ void BaseDelayProcessor::processBlock(
         {
             auto* channelData = 
                 buffer.getWritePointer(channel, startSample);
+
+            float rawSample = channelData[sampleIndex];
             auto* delayData = mDelayBuffer.getWritePointer(channel);
 
             const float drySample = channelData[sampleIndex] * dryValue;
@@ -290,6 +300,8 @@ void BaseDelayProcessor::processBlock(
 
             delayData[mWritePosition] = dampFilter.processSample(channelData[sampleIndex] + delayedSample * feedbackValue);
             channelData[sampleIndex] = drySample + delayedSample * wetValue * duckerGain;
+
+            channelData[sampleIndex] = bypassGainValue * channelData[sampleIndex] + (1.0f - bypassGainValue) * rawSample;
         }
 
         ++mWritePosition;

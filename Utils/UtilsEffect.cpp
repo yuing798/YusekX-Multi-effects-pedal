@@ -2,9 +2,6 @@
 #include <JuceHeader.h>
 #include <string>
 
-
-
-
 DuckerProcessor::DuckerProcessor(juce::AudioProcessorValueTreeState& apvts)
     : mAPVTS(apvts) {
 

@@ -8,11 +8,6 @@
 #include <string>
 #include <vector>
 
-class OpenCloseButton{//针对效果器开启关闭按钮放置爆音的辅助效果
-private:
-
-public:
-};
 
 class DuckerEditor : public juce::Component{
 private:
