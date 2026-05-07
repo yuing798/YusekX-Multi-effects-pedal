@@ -122,14 +122,14 @@ void baseEQProcessor::prepareToPlay(
     mSmoothedBassLevel.reset(mCurrentSampleRate, 0.05); // 50ms的平滑时间
     mSmoothedMiddleLevel.reset(mCurrentSampleRate, 0.05);
     mSmoothedTrebleLevel.reset(mCurrentSampleRate, 0.05);
+    smoothBypassGain.reset(mCurrentSampleRate, 0.05);
     //平滑时间只在prepareToPlay中设置
 
-    eqFilterLeft.lowShelf.setValue(mBassDBGain, mCurrentSampleRate);
-    eqFilterLeft.peakingEQ.setValue(mMiddleDBGain, mCurrentSampleRate);
-    eqFilterLeft.highShelf.setValue(mTrebleDBGain, mCurrentSampleRate);
-    eqFilterRight.lowShelf.setValue(mBassDBGain, mCurrentSampleRate);
-    eqFilterRight.peakingEQ.setValue(mMiddleDBGain, mCurrentSampleRate);
-    eqFilterRight.highShelf.setValue(mTrebleDBGain, mCurrentSampleRate);
+    for(int channel = 0; channel < numChannels; ++channel){
+        EQFilters[channel].lowShelf.setValue(mBassDBGain, mCurrentSampleRate);
+        EQFilters[channel].peakingEQ.setValue(mMiddleDBGain, mCurrentSampleRate);
+        EQFilters[channel].highShelf.setValue(mTrebleDBGain, mCurrentSampleRate);
+    }
 }
 
 void baseEQProcessor::mUpdateProcessorParameters()
@@ -137,7 +137,7 @@ void baseEQProcessor::mUpdateProcessorParameters()
 	mSmoothedBassLevel.setTargetValue(mBassDBGain);
     mSmoothedMiddleLevel.setTargetValue(mMiddleDBGain);
     mSmoothedTrebleLevel.setTargetValue(mTrebleDBGain);
-
+    smoothBypassGain.setTargetValue(mIsOpen ? 0.0f : 1.0f);
 
     //reset会重置isSmoothing标志位，
     // 所以在processBlock里调用mUpdateProcessorParameters时，
@@ -155,7 +155,7 @@ void baseEQProcessor::processBlock(
     syncParametersFromAPVTS();
     mUpdateProcessorParameters();
 
-	if(!mIsOpen){
+	if(smoothBypassGain.getCurrentValue() > 0.999f && smoothBypassGain.getTargetValue() == 1.0f){
 		return;
 	}
 
@@ -168,41 +168,35 @@ void baseEQProcessor::processBaseEQ(
 	int numSamples,
     int numChannels)
 {
-    auto* channelDataLeft = buffer.getWritePointer(0, startSample);
-    auto* channelDataRight = numChannels > 1 ? buffer.getWritePointer(1, startSample) : nullptr;
     for (int i = 0; i < numSamples; ++i) {
 
         float currentBassLevel = mSmoothedBassLevel.getNextValue();
         float currentMiddleLevel = mSmoothedMiddleLevel.getNextValue();
         float currentTrebleLevel = mSmoothedTrebleLevel.getNextValue();
+        float currentBypassGain = smoothBypassGain.getNextValue();
 
-        if(mSmoothedBassLevel.isSmoothing()){
-            eqFilterLeft.lowShelf.setValue(currentBassLevel, mCurrentSampleRate);
-            eqFilterRight.lowShelf.setValue(currentBassLevel, mCurrentSampleRate);
+        for(int channel = 0; channel < numChannels; ++channel){
+            if(mSmoothedBassLevel.isSmoothing()){
+                EQFilters[channel].lowShelf.setValue(currentBassLevel, mCurrentSampleRate);
 
-        }
-        if(mSmoothedMiddleLevel.isSmoothing()){
-            eqFilterLeft.peakingEQ.setValue(currentMiddleLevel, mCurrentSampleRate);
-            eqFilterRight.peakingEQ.setValue(currentMiddleLevel, mCurrentSampleRate);
-        }
-        if(mSmoothedTrebleLevel.isSmoothing()){
-            eqFilterLeft.highShelf.setValue(currentTrebleLevel, mCurrentSampleRate);
-            eqFilterRight.highShelf.setValue(currentTrebleLevel, mCurrentSampleRate);
+            }
+            if(mSmoothedMiddleLevel.isSmoothing()){
+                EQFilters[channel].peakingEQ.setValue(currentMiddleLevel, mCurrentSampleRate);
+            }
+            if(mSmoothedTrebleLevel.isSmoothing()){
+                EQFilters[channel].highShelf.setValue(currentTrebleLevel, mCurrentSampleRate);
+            }
+
+            float* channelData = buffer.getWritePointer(channel, startSample);
+
+            float inputSample = channelData[i];
+            float processedSample = EQFilters[channel].lowShelf.processSample(inputSample);
+            processedSample = EQFilters[channel].peakingEQ.processSample(processedSample);
+            processedSample = EQFilters[channel].highShelf.processSample(processedSample);
+            channelData[i] = processedSample * (1.0f - currentBypassGain) + inputSample * currentBypassGain;
         }
 
-        float inputSampleLeft = channelDataLeft[i];
-        float processedSampleLeft = eqFilterLeft.lowShelf.processSample(inputSampleLeft);
-        processedSampleLeft = eqFilterLeft.peakingEQ.processSample(processedSampleLeft);
-        processedSampleLeft = eqFilterLeft.highShelf.processSample(processedSampleLeft);
-        channelDataLeft[i] = processedSampleLeft;
 
-        if (channelDataRight != nullptr) {
-            float inputSampleRight = channelDataRight[i];
-            float processedSampleRight = eqFilterRight.lowShelf.processSample(inputSampleRight);
-            processedSampleRight = eqFilterRight.peakingEQ.processSample(processedSampleRight);
-            processedSampleRight = eqFilterRight.highShelf.processSample(processedSampleRight);
-            channelDataRight[i] = processedSampleRight;
-        }
     }
 }
 

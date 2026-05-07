@@ -171,12 +171,16 @@ void BaseCompressorProcessor::prepareToPlay(double sampleRate, int maximumBlockS
     mSmoothedAttackTimeMs.reset(currentSampleRate, 0.02);
     mSmoothedReleaseTimeMs.reset(currentSampleRate, 0.02);
     mSmoothedMakeupGainDB.reset(currentSampleRate, 0.02);
+    smoothBypassGain.reset(currentSampleRate, 0.05);
 
-    attackAndReleaseLeft.setAttackAlpha(sampleRate, attackTimeMs);
-    attackAndReleaseLeft.setReleaseAlpha(sampleRate, releaseTimeMs);
+    attackAndReleaseFilters[0].setAttackAlpha(sampleRate, attackTimeMs);
+    attackAndReleaseFilters[0].setReleaseAlpha(sampleRate, releaseTimeMs);
 
-    attackAndReleaseLeft.setValue(attackAndReleaseLeft.attackAlpha);
-    attackAndReleaseRight.setValue(attackAndReleaseLeft.attackAlpha);
+    attackAndReleaseFilters[1].setAttackAlpha(sampleRate, attackTimeMs);
+    attackAndReleaseFilters[1].setReleaseAlpha(sampleRate, releaseTimeMs);
+
+    attackAndReleaseFilters[0].setValue(attackAndReleaseFilters[0].attackAlpha);
+    attackAndReleaseFilters[1].setValue(attackAndReleaseFilters[1].attackAlpha);
 }
 
 
@@ -188,6 +192,7 @@ void BaseCompressorProcessor::updateProcessorParameters()
     mSmoothedAttackTimeMs.setTargetValue(attackTimeMs);
     mSmoothedReleaseTimeMs.setTargetValue(releaseTimeMs);
     mSmoothedMakeupGainDB.setTargetValue(makeupGainDB);
+    smoothBypassGain.setTargetValue(isOpen ? 0.0f : 1.0f);
 }
 
 //以下这个函数只做这四件事：同步参数，更新参数，判断按钮是否开启，进入正式执行函数
@@ -201,7 +206,7 @@ void BaseCompressorProcessor::processCompressor(
     syncParametersFromAPVTS();
     updateProcessorParameters();//平滑度更新不用放在for循环中
 
-    if (!isOpen)
+    if (smoothBypassGain.getCurrentValue() > 0.999f && smoothBypassGain.getTargetValue() == 1.0f)
         return;
 
     processBlock(buffer, startSample, numSamples, numChannels);
@@ -214,12 +219,7 @@ void BaseCompressorProcessor::processBlock(
     int numSamples,
     int numChannels)
 {
-    auto *channelDataLeft = buffer.getWritePointer(0, startSample);
-    float * channelDataRight = nullptr;
-    if(numChannels > 1){
-        channelDataRight = buffer.getWritePointer(1, startSample);
-        //对右声道进行处理
-    }
+
     for(int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++){
 
         float currentThresoldDB = mSmoothedThresoldDB.getNextValue();
@@ -227,74 +227,50 @@ void BaseCompressorProcessor::processBlock(
         float currentAttackTimeMs = mSmoothedAttackTimeMs.getNextValue();
         float currentReleaseTimeMs = mSmoothedReleaseTimeMs.getNextValue();
         float currentMakeupGainDB = mSmoothedMakeupGainDB.getNextValue();
-        if(mSmoothedAttackTimeMs.isSmoothing())
-            attackAndReleaseLeft.setAttackAlpha(currentSampleRate, currentAttackTimeMs);
-            
-        if(mSmoothedReleaseTimeMs.isSmoothing())
-            attackAndReleaseLeft.setReleaseAlpha(currentSampleRate, currentReleaseTimeMs);
+        float currentBypassGain = smoothBypassGain.getNextValue();
 
-        float inputSampleLeft = channelDataLeft[sampleIndex];
-        //对左声道进行处理，处理完后写回channelDataLeft[sampleIndex]
+        for(int channel = 0; channel < numChannels; channel++){
+            auto* channelData = buffer.getWritePointer(channel, startSample);
+            if(mSmoothedAttackTimeMs.isSmoothing())
+                attackAndReleaseFilters[channel].setAttackAlpha(currentSampleRate, currentAttackTimeMs);
+                
+            if(mSmoothedReleaseTimeMs.isSmoothing())
+                attackAndReleaseFilters[channel].setReleaseAlpha(currentSampleRate, currentReleaseTimeMs);
 
-        //转换为dB，1e-6f避免log(0)导致的负无穷大
-        float inputSampleLeftDB = juce::Decibels::gainToDecibels(std::abs(inputSampleLeft) + 1e-6f);
-        float gainLeftDB = 0.0f;
-
-        float slope = 1.0f - 1.0f / currentRatio;
-        float over = inputSampleLeftDB - currentThresoldDB;
-        float k = over + kneeRangeDB * 0.5f;//中间系数，方便计算，没有物理意义
-        if(over > kneeRangeDB * 0.5f){
-            //(targetDB - thresoldDB) / (inputDB - thresoldDB) = 1 / ratio
-            gainLeftDB =  - over * slope;
-        } else if(over > -kneeRangeDB * 0.5f){
-            //在 $over = -W/2$ 处，它的值是 $0$，且斜率也是 $0$（完美衔接不压缩区域）。
-            // 在 $over = W/2$ 处，它的值和斜率都与直线压缩区域完全相等。
-            gainLeftDB = - slope * k * k / (2 * kneeRangeDB);
-        }
-
-
-        if(gainLeftDB < attackAndReleaseLeft.y1){//和前一个采样值比较进行逻辑判断，而不是和阈值进行判断
-            attackAndReleaseLeft.setValue(attackAndReleaseLeft.attackAlpha);
-        } else{
-            attackAndReleaseLeft.setValue(attackAndReleaseLeft.releaseAlpha);
-        }//这个if语句要放在“增益计算 (Gain Computer)：计算如果不考虑平滑，理论上应该压掉多少 dB”之后
-
-        gainLeftDB = attackAndReleaseLeft.processSample(gainLeftDB);
-
-        //将处理后的dB值转换回线性增益
-        float gainLeft = juce::Decibels::decibelsToGain(gainLeftDB + currentMakeupGainDB) ;
-
-        channelDataLeft[sampleIndex] = inputSampleLeft * gainLeft;
-
-        if(numChannels > 1){
-            float inputSampleRight = channelDataRight[sampleIndex];
-            //对右声道进行处理，处理完后写回channelDataRight[sampleIndex]
+            float inputSample = channelData[sampleIndex];
+            //对左声道进行处理，处理完后写回channelDataLeft[sampleIndex]
 
             //转换为dB，1e-6f避免log(0)导致的负无穷大
-            float inputSampleRightDB = juce::Decibels::gainToDecibels(std::abs(inputSampleRight) + 1e-6f);
-            float gainRightDB = 0.0f;
+            float inputSampleDB = juce::Decibels::gainToDecibels(std::abs(inputSample) + 1e-6f);
+            float gainDB = 0.0f;
 
-            float overRight = inputSampleRightDB - currentThresoldDB;
-            float kRight = overRight + kneeRangeDB * 0.5f;//中间系数，方便计算，没有物理意义
-            if(overRight > kneeRangeDB * 0.5f){
-                gainRightDB = - overRight * slope;
-            } else if(overRight > -kneeRangeDB * 0.5f){
-                gainRightDB = - slope * kRight * kRight / (2 * kneeRangeDB);
+            float slope = 1.0f - 1.0f / currentRatio;
+            float over = inputSampleDB - currentThresoldDB;
+            float k = over + kneeRangeDB * 0.5f;//中间系数，方便计算，没有物理意义
+            if(over > kneeRangeDB * 0.5f){
+                //(targetDB - thresoldDB) / (inputDB - thresoldDB) = 1 / ratio
+                gainDB =  - over * slope;
+            } else if(over > -kneeRangeDB * 0.5f){
+                //在 $over = -W/2$ 处，它的值是 $0$，且斜率也是 $0$（完美衔接不压缩区域）。
+                // 在 $over = W/2$ 处，它的值和斜率都与直线压缩区域完全相等。
+                gainDB = - slope * k * k / (2 * kneeRangeDB);
             }
 
-            if(gainRightDB < attackAndReleaseRight.y1){//和前一个采样值比较进行逻辑判断，而不是和阈值进行判断
-                attackAndReleaseRight.setValue(attackAndReleaseLeft.attackAlpha);
-                //两个实例的Alpha都一样，不同的只是y1的值，所以可以直接共用一个实例的Alpha
+
+            if(gainDB < attackAndReleaseFilters[channel].y1){//和前一个采样值比较进行逻辑判断，而不是和阈值进行判断
+                attackAndReleaseFilters[channel].setValue(attackAndReleaseFilters[channel].attackAlpha);
             } else{
-                attackAndReleaseRight.setValue(attackAndReleaseLeft.releaseAlpha);
+                attackAndReleaseFilters[channel].setValue(attackAndReleaseFilters[channel].releaseAlpha);
             }//这个if语句要放在“增益计算 (Gain Computer)：计算如果不考虑平滑，理论上应该压掉多少 dB”之后
 
-            gainRightDB = attackAndReleaseRight.processSample(gainRightDB);
+            gainDB = attackAndReleaseFilters[channel].processSample(gainDB);
 
             //将处理后的dB值转换回线性增益
-            float gainRight = juce::Decibels::decibelsToGain(gainRightDB + currentMakeupGainDB) ;
+            float gain = juce::Decibels::decibelsToGain(gainDB + currentMakeupGainDB) ;
 
-            channelDataRight[sampleIndex] = inputSampleRight * gainRight;
+            channelData[sampleIndex] = inputSample * gain;
+
+            channelData[sampleIndex] = (1.0f - currentBypassGain) * channelData[sampleIndex] + currentBypassGain * inputSample;
         }
     }
 }

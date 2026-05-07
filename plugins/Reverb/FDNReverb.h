@@ -196,7 +196,8 @@ private:
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedPreDelayTimeMs { 1.0f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
-        mSmoothedMakeUpGainDB { 1.0f };
+        mSmoothedMakeUpGainDB { 1.0f },
+        smoothBypassGain { 1.0f };
 
     void processBlock(
         juce::AudioBuffer<float>& buffer,

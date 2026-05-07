@@ -216,6 +216,7 @@ void FDNReverbProcessor::prepareToPlay(double sampleRate, int maximumBlockSize, 
     mSmoothedRoomSize.reset(sampleRate, 0.02);
     mSmoothedPreDelayTimeMs.reset(sampleRate, 0.02);
     mSmoothedMakeUpGainDB.reset(sampleRate, 0.02);
+    smoothBypassGain.reset(sampleRate, 0.05);
 
     for(int channel = 0; channel < numChannels; ++channel){
         preDelays[channel].prepareToPlay(200.0f, currentSampleRate);
@@ -237,7 +238,7 @@ void FDNReverbProcessor::updateProcessorParameters()
     mSmoothedRoomSize.setTargetValue(roomSize);
     mSmoothedPreDelayTimeMs.setTargetValue(preDelayTimeMs);
     mSmoothedMakeUpGainDB.setTargetValue(makeUpGainDB);
-
+    smoothBypassGain.setTargetValue(isOpen ? 0.0f : 1.0f);
 }
 
 //以下这个函数只做这四件事：同步参数，更新参数，判断按钮是否开启，进入正式执行函数
@@ -251,7 +252,7 @@ void FDNReverbProcessor::processDelay(
     syncParametersFromAPVTS();
     updateProcessorParameters();//平滑度更新不用放在for循环中
 
-    if (!isOpen)
+    if (smoothBypassGain.getCurrentValue() > 0.999f && smoothBypassGain.getTargetValue() == 1.0f)
         return;
 
     processBlock(buffer, startSample, numSamples, numChannels);
@@ -276,6 +277,7 @@ void FDNReverbProcessor::processBlock(
         float currentRoomSize = mSmoothedRoomSize.getNextValue();
         float currentPreDelayTimeMs = mSmoothedPreDelayTimeMs.getNextValue();
         float currentMakeUpGainDB = mSmoothedMakeUpGainDB.getNextValue();
+        float currentBypassGain = smoothBypassGain.getNextValue();
 
 
         if (mSmoothedMakeUpGainDB.isSmoothing())
@@ -292,11 +294,13 @@ void FDNReverbProcessor::processBlock(
 
             float* channelData = buffer.getWritePointer(channel, startSample);
             float inputSample = channelData[sampleIndex];
+            float rawSample = inputSample;
             float drySample = inputSample * currentDry;
             float duckerGain = duckerProcessor->processSample(inputSample, duckerProcessor->attackAndReleaseFilters[channel]);
             inputSample = preDelays[channel].processSample(inputSample);
             inputSample = FDNNetworks[channel].processSample(inputSample, currentDecayLevel);
             channelData[sampleIndex] = (inputSample * currentWet * duckerGain + drySample) * makeUpGain;
+            channelData[sampleIndex] = channelData[sampleIndex] * (1.0f - currentBypassGain) + rawSample * currentBypassGain;
         }
     }
 }

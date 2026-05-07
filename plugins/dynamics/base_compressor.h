@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include <cmath>
 #include <memory>
+#include <vector>
 #include "Utils/constants.h"
 #include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_gui_basics/juce_gui_basics.h"
@@ -69,6 +70,8 @@ private:
         mSmoothedReleaseTimeMs { 1.0f };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedMakeupGainDB { 1.0f };
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
+        smoothBypassGain { 1.0f };
 
     struct attackAndReleaseFilter{
         float b0{0.0f};
@@ -100,8 +103,7 @@ private:
         }
     };
 
-    attackAndReleaseFilter attackAndReleaseLeft;
-    attackAndReleaseFilter attackAndReleaseRight;
+    std::vector<attackAndReleaseFilter> attackAndReleaseFilters{2};
 
     float kneeRangeDB { 10.0f };
 

@@ -221,6 +221,7 @@ void SchroederReverbProcessor::prepareToPlay(double sampleRate, int maximumBlock
     mSmoothedRoomSize.reset(sampleRate, 0.02);
     mSmoothedBaseDelayTimeMs.reset(sampleRate, 0.02);
     mSmoothedMakeUpGainDB.reset(sampleRate, 0.02);
+    smoothBypassGain.reset(sampleRate, 0.05);
 
 
     for(int i = 0; i < numChannels; i++){
@@ -243,7 +244,7 @@ void SchroederReverbProcessor::updateProcessorParameters()
     mSmoothedRoomSize.setTargetValue(roomSize);
     mSmoothedBaseDelayTimeMs.setTargetValue(baseDelayTimeMs);
     mSmoothedMakeUpGainDB.setTargetValue(makeUpGainDB);
-
+    smoothBypassGain.setTargetValue(isOpen ? 0.0f : 1.0f);
 }
 
 //以下这个函数只做这四件事：同步参数，更新参数，判断按钮是否开启，进入正式执行函数
@@ -257,7 +258,7 @@ void SchroederReverbProcessor::processDelay(
     syncParametersFromAPVTS();
     updateProcessorParameters();//平滑度更新不用放在for循环中
 
-    if (!isOpen)
+    if (smoothBypassGain.getCurrentValue() > 0.999f && smoothBypassGain.getTargetValue() == 1.0f)
         return;
 
     processBlock(buffer, startSample, numSamples, numChannels);
@@ -283,6 +284,7 @@ void SchroederReverbProcessor::processBlock(
         float currentRoomSize = mSmoothedRoomSize.getNextValue();
         float currentBaseDelayTimeMs = mSmoothedBaseDelayTimeMs.getNextValue();
         float currentMakeUpGainDB = mSmoothedMakeUpGainDB.getNextValue();
+        float currentBypassGain = smoothBypassGain.getNextValue();
 
 
         if (mSmoothedMakeUpGainDB.isSmoothing())
@@ -304,13 +306,14 @@ void SchroederReverbProcessor::processBlock(
 
             float inputSample = channelData[sampleIndex];
             
-            float drySampleLeft = inputSample;
+            float drySample = inputSample;
 
             inputSample = preDelays[channel].processSample(inputSample);
             inputSample = combFilterAlls[channel].processSample(inputSample, currentDecayLevel);
             inputSample = allPassFilterAlls[channel].processSample(inputSample, currentDiffusionLevel);
 
-            channelData[sampleIndex] = (inputSample * currentWetLevel + drySampleLeft * currentDryLevel) * makeUpGain;
+            channelData[sampleIndex] = (inputSample * currentWetLevel + drySample * currentDryLevel) * makeUpGain;
+            channelData[sampleIndex] = channelData[sampleIndex] * (1.0f - currentBypassGain) + drySample * currentBypassGain;
         }
 
     }

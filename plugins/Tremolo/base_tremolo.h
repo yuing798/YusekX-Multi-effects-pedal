@@ -3,6 +3,7 @@
 #include <vector>
 #include "Utils/constants.h"
 #include "Utils/table.h"
+#include "juce_audio_basics/juce_audio_basics.h"
 
 enum WaveFormID{
     Sine = 1,
@@ -81,6 +82,8 @@ private:
     juce::SmoothedValue<float,ValueSmoothingTypes::Linear> mSmoothedDepthGain{0.5f};//仅用于方波
     juce::SmoothedValue<float,ValueSmoothingTypes::Linear> 
         mSmoothedPeakPosition{0.5f};//三角波峰值位置，范围0.0~1.0，默认0.5
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
+        smoothBypassGain { 1.0f };//平滑过渡的旁路增益值
     
     float mSineTableIndex{ 0.0f };//正弦波查找表索引
     float mLfoPhase{ 0.0f };//LFO相位

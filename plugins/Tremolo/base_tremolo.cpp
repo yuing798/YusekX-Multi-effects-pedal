@@ -215,9 +215,11 @@ void BaseTremoloProcessor::prepareToPlay(double sampleRate)
     mSmoothedDutyCycle.reset(sampleRate, 0.01);
     mSmoothedDepthGain.reset(sampleRate, 0.002);
     mSmoothedPeakPosition.reset(sampleRate, 0.01);
+    smoothBypassGain.reset(sampleRate, 0.05);
 
     syncParametersFromAPVTS();
     updateProcessorParameters();
+
 }
 
 void BaseTremoloProcessor::updateProcessorParameters(){
@@ -226,12 +228,8 @@ void BaseTremoloProcessor::updateProcessorParameters(){
     mSmoothedMix.setTargetValue(mMix);
     mSmoothedDutyCycle.setTargetValue(mDutyCycle);
     mSmoothedPeakPosition.setTargetValue(mPeakPosition);
+    smoothBypassGain.setTargetValue(mIsOpen ? 0.0f : 1.0f);
 
-    mSmoothedFrequency.reset(mCurrentSampleRate, 0.01);
-    mSmoothedDepth.reset(mCurrentSampleRate, 0.01);
-    mSmoothedMix.reset(mCurrentSampleRate, 0.01);
-    mSmoothedDutyCycle.reset(mCurrentSampleRate, 0.01);
-    mSmoothedPeakPosition.reset(mCurrentSampleRate, 0.01);
 }
 
 void BaseTremoloProcessor::processTremolo(
@@ -244,7 +242,7 @@ void BaseTremoloProcessor::processTremolo(
     updateProcessorParameters();
     syncParametersFromAPVTS();
 
-    if (!mIsOpen)
+    if (smoothBypassGain.getNextValue() >= 0.999f && smoothBypassGain.getTargetValue() == 1.0f)
         return;
 
 
@@ -281,7 +279,7 @@ void BaseTremoloProcessor::processSineTremolo(
         const auto currentFrequency = mSmoothedFrequency.getNextValue();
         const auto currentDepth = mSmoothedDepth.getNextValue();
         const auto currentMix = mSmoothedMix.getNextValue();
-
+        const auto currentBypassGain = smoothBypassGain.getNextValue();
         const auto sineIndex = juce::jlimit(
             0,
             static_cast<int>(sineTable.size()) - 1,
@@ -296,6 +294,7 @@ void BaseTremoloProcessor::processSineTremolo(
             const auto drySample = channelData[sampleIndex];
             const auto wetSample = drySample * gain;
             channelData[sampleIndex] = (wetSample * currentMix) + (drySample * (1.0f - currentMix));
+            channelData[sampleIndex] = channelData[sampleIndex] * (1.0f - currentBypassGain) + drySample * currentBypassGain;
         }
 
         mSineTableIndex += (currentFrequency / static_cast<float>(mCurrentSampleRate))
@@ -318,6 +317,7 @@ void BaseTremoloProcessor::processSquareTremolo(
         const auto currentDepth = mSmoothedDepth.getNextValue();
         const auto currentMix = mSmoothedMix.getNextValue();
         const auto currentDutyCycle = mSmoothedDutyCycle.getNextValue();
+        float currentBypassGain = smoothBypassGain.getNextValue();
 
         const auto highState = mLfoPhase < currentDutyCycle;
         mSmoothedDepthGain.setTargetValue(highState ? 1.0f : 1.0f - currentDepth);
@@ -329,6 +329,7 @@ void BaseTremoloProcessor::processSquareTremolo(
             const auto drySample = channelData[sampleIndex];
             const auto wetSample = drySample * currentGain;
             channelData[sampleIndex] = (wetSample * currentMix) + (drySample * (1.0f - currentMix));
+            channelData[sampleIndex] = channelData[sampleIndex] * (1.0f - currentBypassGain) + drySample * currentBypassGain;
         }
 
         mLfoPhase += currentFrequency / static_cast<float>(mCurrentSampleRate);
@@ -349,7 +350,7 @@ void BaseTremoloProcessor::processTriangleTremolo(
         const auto currentDepth = mSmoothedDepth.getNextValue();
         const auto currentMix = mSmoothedMix.getNextValue();
         const auto currentPeakPosition = mSmoothedPeakPosition.getNextValue();
-
+        float currentBypassGain = smoothBypassGain.getNextValue();
         float gain = 1.0f;
         if (mLfoPhase < currentPeakPosition)
             gain = (currentDepth / currentPeakPosition) * mLfoPhase + 1.0f - currentDepth;
@@ -362,6 +363,7 @@ void BaseTremoloProcessor::processTriangleTremolo(
             const auto drySample = channelData[sampleIndex];
             const auto wetSample = drySample * gain;
             channelData[sampleIndex] = (wetSample * currentMix) + (drySample * (1.0f - currentMix));
+            channelData[sampleIndex] = channelData[sampleIndex] * (1.0f - currentBypassGain) + drySample * currentBypassGain;
         }
 
         mLfoPhase += currentFrequency / static_cast<float>(mCurrentSampleRate);

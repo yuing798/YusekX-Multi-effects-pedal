@@ -48,16 +48,14 @@ private:
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         mSmoothedBassLevel,
         mSmoothedMiddleLevel,
-        mSmoothedTrebleLevel;
+        mSmoothedTrebleLevel,
+        smoothBypassGain;
 
     bool mIsOpen { false };
 
     struct LowShelfFilter {
 
         float f0 { 100.0f }; // 截止频率
-        juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
-            mSmoothedBassLevel;
-
         float A { 1.0f }; // 线性振幅倍数
         float Q { 0.707f }; // 品质因数
         float w0 { 0.0f }; // 角频率
@@ -103,8 +101,6 @@ private:
 
     struct peakingEQFilter {
 
-        juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
-            mSmoothedMiddleLevel;
 
         float centerFrequency { 1000.0f }; // 中心频率
         float w0 { 0.0f }; // 角频率
@@ -148,8 +144,6 @@ private:
 
     struct highShelfFilter {
         float cutOffFrequency { 5000.0f }; // 截止频率
-        juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
-            mSmoothedTrebleLevel;
 
         float A { 1.0f }; // 线性振幅倍数
         float w0 { 0.0f }; // 角频率
@@ -197,8 +191,7 @@ private:
         peakingEQFilter peakingEQ;
         highShelfFilter highShelf;
     };
-    EQFilter eqFilterLeft;
-    EQFilter eqFilterRight;
+    std::vector<EQFilter> EQFilters{2};
 
     juce::AudioProcessorValueTreeState& mAPVTS;
 

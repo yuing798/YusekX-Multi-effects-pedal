@@ -223,12 +223,6 @@ void YOK3508Processor::prepareToPlay(
     finalWetBuffer.setSize(2, maximumBlockSize);
     finalWetBuffer.clear();
 
-    mSmoothedDepthMs.reset(mCurrentSampleRate, 0.02);
-    mSmoothedRateHz.reset(mCurrentSampleRate, 0.02);
-    mSmoothedMix.reset(mCurrentSampleRate, 0.02);
-    mSmoothedFeedback.reset(mCurrentSampleRate, 0.02);
-    mSmoothedBaseDelayMs.reset(mCurrentSampleRate, 0.02);
-    mSmoothedPhaseOffsetMs.reset(mCurrentSampleRate, 0.02);
 }
 
 void YOK3508Processor::mUpdateProcessorParameters()
@@ -311,11 +305,12 @@ void YOK3508Processor::processThreeChannelsChorus(
         //混合干湿
         auto* channelData = buffer.getWritePointer(channel, startSample);
         auto* wetData = finalWetBuffer.getWritePointer(channel);
-
+        
         //currentMix * bufferSize / 4原理：index / bufferSize == mix * 0.5pi / 2pi
         juce::FloatVectorOperations::multiply(channelData, cosTable[currentMix * bufferSize / 4], numSamples);
         juce::FloatVectorOperations::multiply(wetData, sineTable[currentMix * bufferSize / 4], numSamples);
         juce::FloatVectorOperations::add(channelData, wetData, numSamples);
+        
     }
 
 }
