@@ -229,3 +229,29 @@ struct lowPassFilter{
     }
 };
 
+struct allPassFilterSingle{//单个一阶全通滤波器结构体
+    //y[n] = diffusion * x[n] + x[n - delaySamples] - diffusion * y[n - delaySamples]
+    std::vector<float> allPassDelayLineBuffer;
+
+    int writeIndex{0};
+    int delaySamplesNum{0};
+    int allPassDelayLineValue{0};//根据采样率和房间尺寸计算出的基础延迟时间对应的样本数，作为buffer大小的参考值
+
+    void prepareToPlay(float sampleRate, float roomSize){
+        delaySamplesNum = getNearestPrimeNumber(allPassDelayLineValue * sampleRate / defaultSampleRate * roomSize);
+        writeIndex = 0;
+    }
+
+    void setValue(float sampleRate, float roomSize){
+        delaySamplesNum = getNearestPrimeNumber(allPassDelayLineValue * sampleRate / defaultSampleRate * roomSize);
+    }
+
+    float processSample(float inputSample, float diffusion){
+        int readIndex = getCircularBufferIndex(writeIndex - delaySamplesNum, static_cast<int>(allPassDelayLineBuffer.size()));
+        float readSample = allPassDelayLineBuffer[readIndex];
+        float outputSample = - diffusion * inputSample + readSample ;
+        allPassDelayLineBuffer[writeIndex] = inputSample + diffusion * readSample;
+        return outputSample;
+    }
+};
+
