@@ -5,6 +5,7 @@
 #include "plugins/Booster/base_overdrive.h"
 #include "plugins/Delay/base_delay.h"
 #include "plugins/EQ/eq.h"
+#include "plugins/MOD/flanger.h"
 #include "plugins/MOD/multiChannelsChorus.h"
 #include "plugins/Reverb/FDNReverb.h"
 #include "plugins/Reverb/SchroederReverb.h"
@@ -48,6 +49,7 @@ private:
     BaseCompressorEditor mBaseCompressorEditor;
     SchroederReverbEditor mSchroederReverbEditor;
     FDNReverbEditor mFDNReverbEditor;
+    FlangerEditor mFlangerEditor;
 
     void updateEffectEditor();
     

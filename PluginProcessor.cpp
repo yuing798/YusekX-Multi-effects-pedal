@@ -6,6 +6,7 @@
 #include "juce_audio_processors_headless/juce_audio_processors_headless.h"
 #include "plugins/Delay/base_delay.h"
 #include "plugins/Delay/sine_surround.h"
+#include "plugins/MOD/flanger.h"
 #include "plugins/Reverb/FDNReverb.h"
 #include "plugins/Reverb/SchroederReverb.h"
 #include <vector>
@@ -32,7 +33,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
             mBaseEQProcessor(apvts),
             mBaseCompressorProcessor(apvts),
             mSchroederReverbProcessor(apvts),
-            mFDNReverbProcessor(apvts)
+            mFDNReverbProcessor(apvts),
+            mFlangerProcessor(apvts)
                         
 {
     table.initSineTable(table.sineTable, bufferSize);
@@ -74,6 +76,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     BaseCompressorProcessor::createParameterLayout(parameters);
     SchroederReverbProcessor::createParameterLayout(parameters);
     FDNReverbProcessor::createParameterLayout(parameters);
+    FlangerProcessor::createParameterLayout(parameters);
 
     return { parameters.begin(), parameters.end() };
 }
@@ -99,6 +102,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     mBaseCompressorProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
     mSchroederReverbProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
     mFDNReverbProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+    mFlangerProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -228,6 +232,8 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     
     // auto startTime = std::chrono::high_resolution_clock::now(); //记录处理开始时间
     mFDNReverbProcessor.processDelay(buffer, 0, numSamples, totalNumOutputChannels);//700微秒
+
+    mFlangerProcessor.processFlanger(buffer, 0, numSamples, totalNumOutputChannels);
 
     // auto endTime = std::chrono::high_resolution_clock::now(); //记录处理结束时间
     // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count(); //计算处理时间

@@ -1,6 +1,6 @@
 target_sources(Multi_effects_processor
     PRIVATE
         multiChannelsChorus.cpp
-        multiChannelsChorus.h,
-        flanger.cpp,
+        multiChannelsChorus.h
+        flanger.cpp
         flanger.h)

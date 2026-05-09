@@ -3,7 +3,6 @@
 
 #include <vector>
 void RadSineLookUpTable(std::vector<float>& sineTable, int tableSize);
-void AngleSineLookUpTable(std::vector<float>& sineTable, int tableSize);
 
 float tanhApproximate(float x);
 

@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "juce_audio_processors/juce_audio_processors.h"
+#include "plugins/MOD/flanger.h"
 #include "PluginEditor.h"
 
 //==============================================================================
@@ -14,7 +15,8 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (
     mBaseEQEditor(p.getAPVTS()),
     mBaseCompressorEditor(p.getAPVTS()),
     mSchroederReverbEditor(p.getAPVTS()),
-    mFDNReverbEditor(p.getAPVTS())
+    mFDNReverbEditor(p.getAPVTS()),
+    mFlangerEditor(p.getAPVTS())
 {
     effectSelector.addItem("base delay", 1);
     effectSelector.addItem("base tremolo", 2);
@@ -25,6 +27,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (
     effectSelector.addItem("base compressor", 7);
     effectSelector.addItem("Schroeder Reverb", 8);
     effectSelector.addItem("FDN Reverb", 9);
+    effectSelector.addItem("flanger", 10);
 
     effectSelector.setSelectedId(1);
     addAndMakeVisible(effectSelector);
@@ -38,6 +41,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (
     addAndMakeVisible(mBaseCompressorEditor);
     addAndMakeVisible(mSchroederReverbEditor);
     addAndMakeVisible(mFDNReverbEditor);
+    addAndMakeVisible(mFlangerEditor);
 
     outputGainSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     outputGainSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, 20);
@@ -91,6 +95,7 @@ void AudioPluginAudioProcessorEditor::resized()
     mBaseCompressorEditor.setBounds(10, 70, 380, 300);
     mSchroederReverbEditor.setBounds(10, 70, 380, 350);
     mFDNReverbEditor.setBounds(10, 70, 380, 350);
+    mFlangerEditor.setBounds(10,70,380,450);
 }
 
 void AudioPluginAudioProcessorEditor::updateEffectEditor(){
@@ -105,6 +110,7 @@ void AudioPluginAudioProcessorEditor::updateEffectEditor(){
     mBaseCompressorEditor.setVisible(false);
     mSchroederReverbEditor.setVisible(false);
     mFDNReverbEditor.setVisible(false);
+    mFlangerEditor.setVisible(false);
 
     // 2. 只显示选中的编辑器
     switch (effectSelector.getSelectedId())
@@ -118,6 +124,7 @@ void AudioPluginAudioProcessorEditor::updateEffectEditor(){
         case 7: mBaseCompressorEditor.setVisible(true); break;
         case 8: mSchroederReverbEditor.setVisible(true); break;
         case 9: mFDNReverbEditor.setVisible(true); break;
+        case 10:mFlangerEditor.setVisible(true); break;
         default: break;
     }
 }

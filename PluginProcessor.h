@@ -10,6 +10,7 @@
 #include "plugins/Delay/base_delay.h"
 #include "plugins/Delay/sine_surround.h"
 #include "plugins/EQ/eq.h"
+#include "plugins/MOD/flanger.h"
 #include "plugins/MOD/multiChannelsChorus.h"
 #include "plugins/Reverb/FDNReverb.h"
 #include "plugins/Reverb/SchroederReverb.h"
@@ -92,7 +93,7 @@ private:
         std::vector<float> cosTable;
 
         void initSineTable(std::vector<float>& sineTable, int tableSize) {
-            SineLookUpTable(sineTable, tableSize);
+            RadSineLookUpTable(sineTable, tableSize);
         }
         void initCosTable(std::vector<float>& cosTable, int tableSize) {
             CosLookUpTable(cosTable, tableSize);
@@ -109,6 +110,7 @@ private:
     BaseCompressorProcessor mBaseCompressorProcessor;
     SchroederReverbProcessor mSchroederReverbProcessor;
     FDNReverbProcessor mFDNReverbProcessor;
+    FlangerProcessor mFlangerProcessor;
 
     float processTime{ 0.0f };
     int processCount{ 0 };

@@ -97,34 +97,34 @@ void FlangerEditor::resized(){
     feedbackPolarityButton.setBounds(10, 130, 100, 30);
 
     depthLabel.setBounds(120,10,80,30);
-    depthSlider.setBounds(200,10,100,30);
+    depthSlider.setBounds(200,10,150,30);
 
     wetLabel.setBounds(120,50,80,30);
-    wetSlider.setBounds(200,50,100,30);
+    wetSlider.setBounds(200,50,150,30);
 
     dryLabel.setBounds(120,90,80,30);
-    drySlider.setBounds(200,90,100,30);
+    drySlider.setBounds(200,90,150,30);
 
     rateLabel.setBounds(120,130,80,30);
-    rateSlider.setBounds(200,130,100,30);
+    rateSlider.setBounds(200,130,150,30);
 
     feedbackLabel.setBounds(120,170,80,30);
-    feedbackSlider.setBounds(200,170,100,30);
+    feedbackSlider.setBounds(200,170,150,30);
 
     baseDelayLabel.setBounds(120,210,80,30);
-    baseDelaySlider.setBounds(200,210,100,30);
+    baseDelaySlider.setBounds(200,210,150,30);
 
     phaseOffsetLabel.setBounds(120,250,80,30);
-    phaseOffsetSlider.setBounds(200,250,100,30);
+    phaseOffsetSlider.setBounds(200,250,150,30);
 
     feedbackDampLabel.setBounds(120,290,80,30);
-    feedbackDampSlider.setBounds(200,290,100,30);
+    feedbackDampSlider.setBounds(200,290,150,30);
 
     lfoShapeSymmetryLabel.setBounds(120,330,80,30);
-    lfoShapeSymmetrySlider.setBounds(200,330,100,30);
+    lfoShapeSymmetrySlider.setBounds(200,330,150,30);
 
     lfoShapeStruationLabel.setBounds(120,370,80,30);
-    lfoShapeStruationSlider.setBounds(200,370,100,30);
+    lfoShapeStruationSlider.setBounds(200,370,150,30);
 }
 
 void FlangerProcessor::createParameterLayout(std::vector<std::unique_ptr<juce::RangedAudioParameter>> &parameters){
@@ -149,9 +149,9 @@ void FlangerProcessor::createParameterLayout(std::vector<std::unique_ptr<juce::R
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
         FlangerPhaseOffsetId, "Flanger Phase Offset", juce::NormalisableRange<float>(0.0f, 360.0f, 1.0f), 180.0f));
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
-        FlangerFeedbackDampId, "Flanger Feedback Damp", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.0f));
+        FlangerFeedbackDampId, "Flanger Feedback Damp", juce::NormalisableRange<float>(0.0f, 0.95f, 0.01f), 0.0f));
     parameters.push_back(std::make_unique<juce::AudioParameterBool>(
-        FlangerFeedbackPolarityId, "Flanger Feedback Polarity", true));
+        FlangerFeedbackPolarityId, "Flanger Feedback Polarity", false));
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
         FlangerLfoShapeSymmetryId, "Flanger LFO Shape Symmetry", juce::NormalisableRange<float>(-1.0f, 1.0f, 0.01f), 0.0f));
     parameters.push_back(std::make_unique<juce::AudioParameterFloat>(
@@ -165,11 +165,11 @@ void FlangerProcessor::syncParametersFromAPVTS(){
     }
     if(auto* depthParam = mAPVTS.getRawParameterValue(FlangerDepthId))
         depthMs = depthParam->load();
-    if(auto* wetParam = mAPVTS.getRawParameterValue(FlangerRateId))
+    if(auto* wetParam = mAPVTS.getRawParameterValue(FlangerWetId))
         wetLevel = wetParam->load();
-    if(auto* dryParam = mAPVTS.getRawParameterValue(FlangerWetId))
+    if(auto* dryParam = mAPVTS.getRawParameterValue(FlangerDryId))
         dryLevel = dryParam->load();
-    if(auto* rateParam = mAPVTS.getRawParameterValue(FlangerDryId))
+    if(auto* rateParam = mAPVTS.getRawParameterValue(FlangerRateId))
         rateHz = rateParam->load();
     if(auto* feedbackParam = mAPVTS.getRawParameterValue(FlangerFeedbackId))
         feedback = feedbackParam->load();
@@ -278,7 +278,7 @@ void FlangerProcessor::processFlanger(
                 currentLfoShapeSymmetry, 
                 currentLfoShapeStruation) * currentDepthMs;
             float delayMs = currentPreDelayMs + lfoValueMs + FlangerDryPreDelayTimeMs;//计算湿信号延迟时间
-            delayMs = std::max(delayMs, 0.0f);//防止采集到未来样本
+            delayMs = std::max(delayMs, 0.5f);//防止采集到未来样本
             float numDelaySamples = ms2Samples(delayMs, currentSampleRate); //毫秒数转化为样本数
             float readIndex = getCircularBufferIndex(
                 flangerStates[channel].writeIndex - numDelaySamples, flangerStates[channel].wetDelayBuffer.size());
@@ -286,13 +286,16 @@ void FlangerProcessor::processFlanger(
                 flangerStates[channel].wetDelayBuffer.data(), 
                 flangerStates[channel].wetDelayBuffer.size(), 
                 readIndex);
-            float rawSample = channelData[sampleIndex];//将原始数据写入延迟缓冲区
-            float drySample = rawSample * currentDryLevel;
-            flangerStates[channel].wetDelayBuffer[flangerStates[channel].writeIndex] = drySample;
-            drySample = flangerStates[channel].preDelayState.processSample(drySample);//获得干数据并进行预延迟处理
+            float rawSample = channelData[sampleIndex];//原始数据
+            float drySample = rawSample;
             
-            channelData[sampleIndex] = drySample + flangerStates[channel].lowpass.processSample(
-                readSample * currentFeedback * currentFeedbackPolarity) *currentWetLevel;//将反馈阻尼后的数据写回去,并进行干湿混合
+            float feedbackInput = readSample * currentFeedback * currentFeedbackPolarity;//未经过阻尼的反馈数据
+            feedbackInput = flangerStates[channel].lowpass.processSample(feedbackInput);
+            //获取经过反馈阻尼处理后的湿数据
+            flangerStates[channel].wetDelayBuffer[flangerStates[channel].writeIndex] = rawSample + feedbackInput;//将湿数据写入延迟缓冲区
+            rawSample = flangerStates[channel].preDelayState.processSample(rawSample);//干数据进行预延迟处理
+            
+            channelData[sampleIndex] = rawSample * currentDryLevel + readSample *currentWetLevel;//将反馈阻尼后的数据写回去,并进行干湿混合
             flangerStates[channel].writeIndex++;
             flangerStates[channel].writeIndex = getCircularBufferIndex(
                 flangerStates[channel].writeIndex, 
@@ -300,7 +303,7 @@ void FlangerProcessor::processFlanger(
             flangerStates[channel].lfoPhase += phaseStep;
             flangerStates[channel].lfoPhase = getCircularBufferIndex(flangerStates[channel].lfoPhase, 360);
 
-            channelData[sampleIndex] = (1.0f - currentBypassGain) * channelData[sampleIndex] + currentBypassGain * rawSample;//开关状态平滑处理
+            channelData[sampleIndex] = (1.0f - currentBypassGain) * channelData[sampleIndex] + currentBypassGain * drySample;//开关状态平滑处理
             
         }
     }
@@ -326,7 +329,7 @@ float FlangerProcessor::processLFO(float phase, float symmetry, float saturation
 
     // 应用饱和度
     // 当 saturation=0 时，drive=1.0；当 saturation=100 时，drive 很大
-    float drive = juce::jmap(saturation, 0.0f, 100.0f, 1.0f, 20.0f);
+    float drive = juce::jmap(saturation, 0.0f, 100.0f, 1.0f, 5.0f);
     
     // 使用 tanh 塑形
     float shapedWave = tanhApproximate(drive * rawWave) / tanhApproximate(drive);
