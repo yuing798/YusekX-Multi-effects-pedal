@@ -1,10 +1,14 @@
 #pragma once
 #include <JuceHeader.h>
 #include "constants.h"
+#include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_audio_processors/juce_audio_processors.h"
+#include "juce_core/juce_core.h"
 #include "juce_graphics/juce_graphics.h"
 #include "juce_gui_basics/juce_gui_basics.h"
+#include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -91,4 +95,63 @@ struct DuckerProcessor
     void prepareToPlay(float sampleRate);
 
     void setUpdateValue(float sampleRate);
+};
+
+struct SharedMetronomeStates{//节拍器
+    juce::AudioBuffer<float> stressBuffer;//重音音色缓冲包
+    juce::AudioBuffer<float> lightBuffer;//轻音音色缓冲包
+    float sampleRate{defaultSampleRate};
+};
+
+class metronomeMachineEditor : public juce::Component
+{
+private:
+
+    juce::TextButton openCloseButtom;
+
+    juce::Label gainDBLabel;//节拍器自己管理的增益（不和实际音频流音量同步）
+    juce::Label bpmLabel;//bpm大小
+    juce::Label stressSeletorLabel;//重音音色选择
+    juce::Label lightSeletorLabel;//轻音音色选择
+
+    juce::Slider gainDBSlider;
+    juce::Slider bpmSlider;
+    juce::ComboBox stressSeletorComboBox;
+    juce::ComboBox lightSeletorComboBox;
+
+    std::unique_ptr<SliderAttachment> gainDBAttachment;
+    std::unique_ptr<SliderAttachment> bpmAttachment;
+    std::unique_ptr<ComboBoxAttachment> stressSeletorAttachment;
+    std::unique_ptr<ComboBoxAttachment> lightSeletorAttachment; 
+
+    std::atomic<SharedMetronomeStates*> currentDataPtr{nullptr};
+
+public:
+    void loadAudioFile(const juce::File& file);//将音色注册到程序中
+    void resized() override;//组件布局
+    void setUIVisible();//使得组件可视化
+    void updateStressTone();//切换重音音色
+    void updateLightTone();//设置轻音音色
+
+};
+class metronomeMachineProcessor{
+
+private:
+
+    float bpm{0.0f};
+    float gainDB{0.0f};
+    int count{0};//节拍器的计数器
+    std::atomic<bool> isOpen;
+
+    std::atomic<SharedMetronomeStates*> currentDataPtr{nullptr};
+
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> smoothedBpm,smoothedGainDB;
+    //音色切换在节拍器停止后才设置，所以没必要使用平滑
+
+public:
+
+    void transformBufferState(float sampleRate, int numChannels);
+    //音色文件的采样率和通道数都可能和实际音频流不同，需要根据实际音频流状态进行更新
+    void updateStressTone();//切换重音音色
+    void updateLightTone();//设置轻音音色
 };

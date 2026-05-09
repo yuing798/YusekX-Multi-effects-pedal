@@ -84,9 +84,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout
 //==============================================================================
 void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
-    juce::ignoreUnused (sampleRate, samplesPerBlock);
 
     mCurrentSampleRate = sampleRate; //保存当前采样率
 
