@@ -78,3 +78,15 @@ float sinc(float x){
         return std::sin(pi * x) / (pi * x);
     }
 }
+
+float linearToLg(float linearValue){
+    if(linearValue <= 0.0f) return -100.0f; // 避免对数函数的负无穷大
+    return std::log10(linearValue);
+}
+float linearToDb(float linearValue){
+    return 20.0f * linearToLg(linearValue);
+}
+float normalLg2Linear(float normalLgValue, float maxLinearValue, float minLinearValue){
+    minLinearValue = std::max(minLinearValue, 1e-6f); // 避免对数函数的负无穷大
+    return minLinearValue * std::pow(maxLinearValue / minLinearValue, normalLgValue);
+}

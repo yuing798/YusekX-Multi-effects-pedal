@@ -156,7 +156,7 @@ void BaseDelayProcessor::syncParametersFromAPVTS()
 {
     //if语句用来判断ID正确以及参数是否已经被注册
     if (auto* openParameter = mAPVTS.getRawParameterValue(BaseDelayOpenId)){
-        isOpen = openParameter->load() >= 0.5f;
+        bool isOpen = openParameter->load() >= 0.5f;
         smoothBypassGain.setTargetValue(isOpen ? 0.0f : 1.0f);
     }
 

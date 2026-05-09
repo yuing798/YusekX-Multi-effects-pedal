@@ -50,8 +50,6 @@ class BaseDelayProcessor{
 private:
     static constexpr float baseDelaymaxDelayTimeMs { 500.0f };
 
-
-    bool isOpen { false };
     float delayTimeMs { 350.0f };
 
     //对于非相干信号，如果要保持听感响度一致，需要wet^2 + dry^2 = 1

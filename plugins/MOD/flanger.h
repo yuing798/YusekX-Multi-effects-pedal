@@ -2,9 +2,11 @@
 
 #include <JuceHeader.h>
 #include <memory>
+#include <vector>
 #include "Utils/constants.h"
 #include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_gui_basics/juce_gui_basics.h"
+#include "dspFilters.h"
 
 class FlangerEditor : public juce::Component
 {
@@ -69,14 +71,28 @@ private:
     float wetLevel { 0.5f };
     float dryLevel{0.5f};
     float feedback { 0.0f };
-    float preDelayMs { 4.0f };
+    float preDelayMs { 1.0f };
     float LFOPhaseOffset{180.0f};
     float feedbackDamp { 0.0f };
     float lfoShapeSymmetry{0.0f};
     float lfoShapeStruation{0.0f};
 
+
     double currentSampleRate { defaultSampleRate };
     int delayBufferLength { 0 };
+
+    struct flangerState{
+        float lfoPhase{0.0f};
+        float writeIndex{0.0f};
+        lowPassFilter lowpass;
+        std::vector<float> wetDelayBuffer;
+        preDelay preDelayState;
+    };
+    std::vector<flangerState> flangerStates;
+
+    const float dryPreDelayTimeMs{1.0f};//干信号预延迟时间
+    const float maxLfoDepthMs{12.0f};//lfo震荡最大深度
+    const float maxWetBaseDelayTimeMs{10.0f};//最大湿信号预延迟时间
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         smoothOpenClose{1.0f},
@@ -92,17 +108,12 @@ private:
         smoothLfoShapeSymmetry{lfoShapeSymmetry},
         smoothLfoShapeStruation{lfoShapeStruation};
 
-    juce::AudioProcessorValueTreeState& mAPVTS;
 
-    void processBlock(
-        juce::AudioBuffer<float>& buffer,
-		int startSample,
-		int numSamples,
-        int numChannels
-    );	
+    juce::AudioProcessorValueTreeState& mAPVTS;
 
 
 	void updateProcessorParameters();
+    float processLFO(float phase, float symmetry, float saturation);
 
 public:
     explicit FlangerProcessor(juce::AudioProcessorValueTreeState& apvts);

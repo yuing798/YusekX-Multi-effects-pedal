@@ -28,18 +28,19 @@ T1 getCircularBufferIndex(T1 currentIndex, int size){
 }
 //将弧度转化为索引步长
 float transformRadIntoIndexStep(float rad, int tableSize);
-
 //将弧度变成毫秒数
 float transformRadIntoMs(float rad, float sampleRate);
-
 //将毫秒转换为样本数
 float transformMsIntoSamples(float ms, float sampleRate);
-
 //辗转相除法求最大公约数
 int gcd(int a, int b);
-
 //查找最近素数
 int getNearestPrimeNumber(float num);
-
 //sinc计算
 float sinc(float x);
+//线性转化为lg坐标并进行归一化
+float linearToLg(float linearValue);
+//线性转化为dB坐标
+float linearToDb(float linearValue);
+//归一化lg坐标转化为线性
+float normalLg2Linear(float normalLgValue, float maxLinearValue, float minLinearValue);

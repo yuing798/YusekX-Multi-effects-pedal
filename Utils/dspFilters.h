@@ -6,10 +6,13 @@
 #include "dataStructs.h"
 
 struct preDelay{
+    
+private:
     std::vector<float> preDelayBuffer;
     int writeIndex{0};
     float delaySamplesNum{0};
 
+public:
     void prepareToPlay(float maxDelayTimeMs, float sampleRate);
 
     void setValue(float sampleRate, float baseDelayTimeMs);

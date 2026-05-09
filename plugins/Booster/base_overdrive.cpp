@@ -229,7 +229,7 @@ void baseOverdriveProcessor::processBaseOverdrive(
             //过载失真
             std::vector<float> boostBufferLeft = overSamplingStates[channel].processUpSamplingMultiPhase(inputSample);
             for(size_t index = 0; index < boostBufferLeft.size(); index++){
-                tanhApproximate(boostBufferLeft[index]);//使用近似算法减少计算量
+                boostBufferLeft[index] = tanhApproximate(boostBufferLeft[index]);//使用近似算法减少计算量
             }
             inputSample = overSamplingStates[channel].processDownSamplingMultiPhase(boostBufferLeft);
             //这里没有进行群时延补偿，因为15.75个样本的延迟对于过载效果来说是可以接受的，而且进行群时延补偿会增加CPU开销

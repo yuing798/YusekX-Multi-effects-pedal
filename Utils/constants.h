@@ -111,6 +111,25 @@ static constexpr float hadamard8x8[8][8] = {
     { 0.3536f, -0.3536f, -0.3536f,  0.3536f, -0.3536f,  0.3536f,  0.3536f, -0.3536f}
 };
 
+//flanger效果器ID
+static constexpr const char* FlangerOpenId = "flangerOpen";
+static constexpr const char* FlangerDepthId = "flangerDepth";
+static constexpr const char* FlangerRateId = "flangerRate";
+static constexpr const char* FlangerWetId = "flangerWet";
+static constexpr const char* FlangerDryId = "flangerDry";
+static constexpr const char* FlangerFeedbackId = "flangerFeedback";
+static constexpr const char* FlangerPreDelayId = "flangerPreDelay";
+static constexpr const char* FlangerPhaseOffsetId = "flangerPhaseOffset";
+static constexpr const char* FlangerFeedbackDampId = "flangerFeedbackDamp";
+static constexpr const char* FlangerFeedbackPolarityId = "flangerFeedbackPolarity";
+static constexpr const char* FlangerLfoShapeSymmetryId = "flangerLfoShapeSymmetry";
+static constexpr const char* FlangerLfoShapeStruationId = "flangerLfoShapeStruation";
+
+//flanger常量
+static constexpr const float FlangerDryPreDelayTimeMs{1.0f};//干信号预延迟时间
+static constexpr const float FlangerMaxLfoDepthMs{12.0f};//lfo震荡最大深度
+static constexpr const float FlangerMaxWetBaseDelayTimeMs{10.0f};//最大湿信号预延迟时间
+
 //attachment别名
 using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
 using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
