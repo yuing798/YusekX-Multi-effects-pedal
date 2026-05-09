@@ -5,6 +5,9 @@
 //线性插值函数
 float getLinearInterpolator(const float* data,int size, float index) ;
 
+//三阶拉格朗日插值
+float getLagrangeInterpolator(const float* data, int size, float index);
+
 //卷积计算公式
 std::vector<float> convolve(const std::vector<float>& input, const std::vector<float>& kernel);
 
@@ -27,11 +30,11 @@ T1 getCircularBufferIndex(T1 currentIndex, int size){
     return currentIndex;
 }
 //将弧度转化为索引步长
-float transformRadIntoIndexStep(float rad, int tableSize);
+float rad2IndexStep(float rad, int tableSize);
 //将弧度变成毫秒数
-float transformRadIntoMs(float rad, float sampleRate);
+float rad2Ms(float rad, float sampleRate);
 //将毫秒转换为样本数
-float transformMsIntoSamples(float ms, float sampleRate);
+float ms2Samples(float ms, float sampleRate);
 //辗转相除法求最大公约数
 int gcd(int a, int b);
 //查找最近素数

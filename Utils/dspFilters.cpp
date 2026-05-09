@@ -1,13 +1,13 @@
 #include "dspFilters.h"
 
 void preDelay::prepareToPlay(float maxDelayTimeMs, float sampleRate){
-    float maxDelaySamplesNum = transformMsIntoSamples(maxDelayTimeMs , sampleRate);//200.0f是最大预延迟时间
+    float maxDelaySamplesNum = ms2Samples(maxDelayTimeMs , sampleRate);//200.0f是最大预延迟时间
     preDelayBuffer.resize(maxDelaySamplesNum + 1, 0.0f);
     writeIndex = 0;
 }
 
 void preDelay::setValue(float sampleRate, float baseDelayTimeMs){
-    delaySamplesNum = transformMsIntoSamples(baseDelayTimeMs, sampleRate);
+    delaySamplesNum = ms2Samples(baseDelayTimeMs, sampleRate);
 }
 
 float preDelay::processSample(float inputSample){//这个是普通的延迟效果器y[n] = x[n-D]函数

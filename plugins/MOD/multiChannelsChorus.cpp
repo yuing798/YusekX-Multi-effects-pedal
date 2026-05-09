@@ -351,7 +351,7 @@ void YOK3508Processor::processCertainChorus(
 
 
         float sineIndexRight = chorusState.mSineTableIndex + 
-            transformRadIntoIndexStep(rightRadToLeftRad, sineTable.size());
+            rad2IndexStep(rightRadToLeftRad, sineTable.size());
         sineIndexRight = getCircularBufferIndex(sineIndexRight,sineTable.size());
         float sineValueRight = getLinearInterpolator(sineTable.data(), 
             static_cast<int>(sineTable.size()), 
@@ -361,9 +361,9 @@ void YOK3508Processor::processCertainChorus(
 		float rightDelayMs = currentBaseDelayMs + currentDepthMs * sineValueRight - phaseOffsetMs / 2;
 
 		float leftReadPosition =
-			static_cast<float>(chorusState.mWritePosition) - transformMsIntoSamples(leftDelayMs, mCurrentSampleRate);
+			static_cast<float>(chorusState.mWritePosition) - ms2Samples(leftDelayMs, mCurrentSampleRate);
 		float rightReadPosition =
-			static_cast<float>(chorusState.mWritePosition) - transformMsIntoSamples(rightDelayMs, mCurrentSampleRate);
+			static_cast<float>(chorusState.mWritePosition) - ms2Samples(rightDelayMs, mCurrentSampleRate);
 
         //调节索引防止越界
         leftReadPosition = getCircularBufferIndex(

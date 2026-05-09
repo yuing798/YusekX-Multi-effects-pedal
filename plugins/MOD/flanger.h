@@ -21,7 +21,7 @@ private:
     juce::Slider drySlider;
     juce::Slider rateSlider;
     juce::Slider feedbackSlider;
-    juce::Slider preDelaySlider;
+    juce::Slider baseDelaySlider;
     juce::Slider phaseOffsetSlider;
     juce::Slider feedbackDampSlider;
     juce::Slider lfoShapeSymmetrySlider;
@@ -32,7 +32,7 @@ private:
     juce::Label dryLabel;
     juce::Label rateLabel;
     juce::Label feedbackLabel;
-    juce::Label preDelayLabel;
+    juce::Label baseDelayLabel;
     juce::Label phaseOffsetLabel;
     juce::Label feedbackDampLabel;
     juce::Label feedbackPolarityLabel;
@@ -45,7 +45,7 @@ private:
     std::unique_ptr<SliderAttachment> dryAttachment;
     std::unique_ptr<SliderAttachment> rateAttachment;
     std::unique_ptr<SliderAttachment> feedbackAttachment;
-    std::unique_ptr<SliderAttachment> preDelayAttachment;
+    std::unique_ptr<SliderAttachment> baseDelayAttachment;
     std::unique_ptr<SliderAttachment> phaseOffsetAttachment;
     std::unique_ptr<SliderAttachment> feedbackDampAttachment;//反馈阻尼
     std::unique_ptr<ButtonAttachment> feedbackPolarityAttachment;//反馈极性
@@ -71,7 +71,7 @@ private:
     float wetLevel { 0.5f };
     float dryLevel{0.5f};
     float feedback { 0.0f };
-    float preDelayMs { 1.0f };
+    float baseDelayMs { 1.0f };
     float LFOPhaseOffset{180.0f};
     float feedbackDamp { 0.0f };
     float lfoShapeSymmetry{0.0f};
@@ -90,9 +90,7 @@ private:
     };
     std::vector<flangerState> flangerStates;
 
-    const float dryPreDelayTimeMs{1.0f};//干信号预延迟时间
-    const float maxLfoDepthMs{12.0f};//lfo震荡最大深度
-    const float maxWetBaseDelayTimeMs{10.0f};//最大湿信号预延迟时间
+
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>
         smoothOpenClose{1.0f},
@@ -101,7 +99,7 @@ private:
         smoothWet{wetLevel},
         smoothDry{dryLevel},
         smoothFeedback{feedback},
-        smoothPreDelay{preDelayMs},
+        smoothBaseDelay{baseDelayMs},
         smoothPhaseOffset{LFOPhaseOffset},
         smoothFeedbackDamp{feedbackDamp},
         smoothFeedbackPolarity{1.0f},
